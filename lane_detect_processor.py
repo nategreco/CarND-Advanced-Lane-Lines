@@ -46,6 +46,16 @@ SOBEL_X_LOWER_THRESH = 15
 SOBEL_X_UPPER_THRESH = 255
 SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
 SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
+#Calculate the birds eye view matrix transformation
+SRC = np.float32([[230, 720], \
+                  [635, 440], \
+                  [645, 440], \
+                  [1050, 720]])
+DST = np.float32([[230, 720], \
+                  [230, 0], \
+                  [1050, 0], \
+                  [1050, 720]])
+BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
@@ -72,7 +82,7 @@ class Line(): #TODO - Just copied from Udacity course
         self.ally = None
 
 #Functions
-def extract_roi(image): #TODO - Incomplete
+def extract_roi(image):
     """
     Applies an image mask.
     
@@ -99,7 +109,7 @@ def extract_roi(image): #TODO - Incomplete
     masked_image = cv2.bitwise_and(image, mask)
     return masked_image
 
-def trim_roi(image, pixels): #TODO - Incomplete
+def trim_roi(image, pixels):
     """
     This function trims the image's ROI to reduce any false gradients
     created by the edge of the ROI.
@@ -171,7 +181,7 @@ def calibrate_camera(images, x_pts, y_pts):
         gray.shape[::-1], None, None )
     return mtx, dist
 
-def hls_threshold(image): #TODO - Incomplete
+def hls_threshold(image):
     hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     #White threshold
     white_binary = cv2.inRange(hls, WHITE_LOWER_THRESH, WHITE_UPPER_THRESH)
@@ -181,7 +191,7 @@ def hls_threshold(image): #TODO - Incomplete
     mask = cv2.bitwise_or(white_binary, yellow_binary)
     return mask
 
-def gradient_threshold(image): #TODO - Incomplete
+def gradient_threshold(image):
     #Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #Get derivative with respect to x
@@ -206,7 +216,7 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Normalize imaeg
     cv2.normalize(working_image, working_image, 0, 255, cv2.NORM_MINMAX)
     #Undistort image
-    working_image = image = cv2.undistort(working_image, mtx, dist, None, mtx)
+    working_image = cv2.undistort(working_image, mtx, dist, None, mtx)
     #Extract ROI
     working_image = extract_roi(working_image)
     #Color threshold
@@ -216,9 +226,18 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Trim gradient mask to remove false edges
     gradient_mask = trim_roi(gradient_mask, 3)
     #Combine masks
-    mask = cv2.bitwise_and(color_mask, gradient_mask)
-    #Create lines
+    binary = cv2.bitwise_and(color_mask, gradient_mask)
+    #Warp to birds-eye-view perspective
+    bev_image = cv2.warpPerspective(binary, \
+                                    BEV_MATRIX, \
+                                    (binary.shape[1], binary.shape[0]))
+    #Find lines
     left_line = Line()
     right_line = Line()
-    test_image = cv2.bitwise_and(image, cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR))
-    return left_line, right_line, test_image
+    #Create output image
+    output_image = cv2.undistort(image, mtx, dist, None, mtx)
+    #Temporary test image
+    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
+    #output_image = binary
+    output_image = bev_image
+    return left_line, right_line, output_image

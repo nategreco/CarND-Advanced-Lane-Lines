@@ -72,7 +72,7 @@ for i in range(1, len(sys.argv)):
             break
 
         #Process frame to find lines
-        left_line, right_line, test_image = \
+        left_line, right_line, output_image = \
             lanetools.detect_lines(frame, \
             cal_mtx, \
             cal_dist)
@@ -86,9 +86,9 @@ for i in range(1, len(sys.argv)):
         #Draw averaged lines on original image
 
         #Write new frame
-        video_out.write(frame)
+        video_out.write(output_image)
         #Display new frame
-        cv2.imshow('Results', test_image)        
+        cv2.imshow('Results', output_image)        
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     video_in.release()
