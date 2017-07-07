@@ -23,10 +23,11 @@
 ################################################################################
 
 #System imports
+import numpy as np
+import matplotlib.pyplot as plt
 
 #3rd party imports
 import cv2
-import numpy as np
 
 #Local project imports
 
@@ -38,11 +39,11 @@ ROI_SF = np.array([[(0.00, 0.95), \
                     #(0.90, 0.80), \
                     (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH = np.array([0, 50, 10])
+WHITE_LOWER_THRESH = np.array([0, 40, 6])
 WHITE_UPPER_THRESH = np.array([180, 255, 255])
 YELLOW_LOWER_THRESH = np.array([5, 10, 45])
 YELLOW_UPPER_THRESH = np.array([55, 255, 255])
-SOBEL_X_LOWER_THRESH = 15
+SOBEL_X_LOWER_THRESH = 20
 SOBEL_X_UPPER_THRESH = 255
 SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
 SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
@@ -56,6 +57,9 @@ DST = np.float32([[280, 0], \
                   [280, 720], \
                   [1094, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
+NUM_WINDOWS = 10
+WINDOW_WIDTH = 200
+MIN_PIXELS = 50
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
@@ -80,6 +84,10 @@ class Line(): #TODO - Just copied from Udacity course
         self.allx = None  
         #y values for detected line pixels
         self.ally = None
+
+#Global variables
+left_line = Line()
+right_line = Line()
 
 #Functions
 def extract_roi(image):
@@ -210,6 +218,67 @@ def gradient_threshold(image):
     mask = cv2.bitwise_or(sxbinary, sybinary)
     return mask
 
+def fit_lines(image):
+    #Take a histogram of the bottom half of the image
+    histogram = np.sum(image[image.shape[0] // 2:,:], axis=0)
+    #Sliding window methodology
+    #Create an output image to draw on and  visualize the result
+    out_img = np.dstack((image, image, image)) * 255
+    window_height = np.int(image.shape[0] / NUM_WINDOWS)
+    #Identify the x and y positions of all nonzero pixels in the image
+    nonzero = image.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    #Create startpoints
+    midpoint = np.int(histogram.shape[0] / 2)
+    leftx_current = np.argmax(histogram[:midpoint])
+    rightx_current = np.argmax(histogram[midpoint:]) + midpoint
+    #Create empty lists to receive left and right lane pixel indices
+    left_lane_inds = []
+    right_lane_inds = []
+    #Step through the windows one by one
+    for window in range(NUM_WINDOWS):
+        # Identify window boundaries in x and y (and right and left)
+        win_y_low = image.shape[0] - (window + 1) * window_height
+        win_y_high = image.shape[0] - window * window_height
+        win_xleft_low = int(leftx_current - WINDOW_WIDTH / 2)
+        win_xleft_high = int(leftx_current + WINDOW_WIDTH / 2)
+        win_xright_low = int(rightx_current - WINDOW_WIDTH / 2)
+        win_xright_high = int(rightx_current + WINDOW_WIDTH / 2)
+        #Draw the windows on the visualization image
+        cv2.rectangle(out_img, \
+		              (win_xleft_low, win_y_low), \
+			          (win_xleft_high, win_y_high), \
+			          (0, 255, 0), \
+			          2)
+        cv2.rectangle(out_img, \
+		              (win_xright_low, win_y_low), \
+			          (win_xright_high, win_y_high),\
+			          (0, 255, 0), \
+			          2)
+        #Identify the nonzero pixels in x and y within the window
+        good_left_inds = ((nonzeroy >= win_y_low) & \
+		                  (nonzeroy < win_y_high) & \
+						  (nonzerox >= win_xleft_low) \
+						  & (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & \
+		                   (nonzeroy < win_y_high) & \
+						   (nonzerox >= win_xright_low) & \
+						   (nonzerox < win_xright_high)).nonzero()[0]
+        #Append these indices to the lists
+        left_lane_inds.append(good_left_inds)
+        right_lane_inds.append(good_right_inds)
+        #If you found > MIN_PIXELS, recenter next window on their mean position
+        if len(good_left_inds) > MIN_PIXELS:
+            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+        if len(good_right_inds) > MIN_PIXELS:        
+            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+	#TODO - Polyfits of left/right line
+    #Return lines
+    left_poly = []
+    right_poly = []
+    return left_poly, right_poly
+
 def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Work with working copy
     working_image = image.copy()
@@ -232,8 +301,9 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    left_line = Line()
-    right_line = Line()
+    left_poly, right_poly = fit_lines(bev_image)
+    left_line.current_fit = left_poly
+    right_line.current_fit = right_poly
     #Create output image
     output_image = cv2.undistort(image, mtx, dist, None, mtx)
     #Temporary test image
