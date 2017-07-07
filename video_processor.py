@@ -24,13 +24,19 @@
 
 #System imports
 import sys
+import os
 
 #3rd party imports
 import cv2
 
 #Local project imports
-import video_processor_tools as tools
-import lane_detect_processor
+import video_processor_tools as vidtools
+import lane_detect_processor as lanetools
+
+#Constants
+CAL_PATH = '.\\camera_cal'
+CAL_PTS_X = 9
+CAL_PTS_Y = 6
 
 #Code
 #Check for arguments
@@ -38,12 +44,19 @@ if len(sys.argv) < 2:
     input("No arguments passed, press ENTER to exit...")
     quit()
 
-#TODO
 #Perform camera calibration
+image_files = [f for f in os.listdir(CAL_PATH) \
+    if os.path.isfile(os.path.join(CAL_PATH, f))]
+images = []
+for file in image_files:
+    image = cv2.imread(CAL_PATH + '\\' + file)
+    images.append(image)
+cal_matrix = lanetools.calibrate(images, CAL_PTS_X, CAL_PTS_Y)
 
+#Iterate through video files
 for i in range(1, len(sys.argv)):
     video_in = cv2.VideoCapture(sys.argv[i])   
-    video_out = cv2.VideoWriter(tools.rename_output_file(sys.argv[i]), \
+    video_out = cv2.VideoWriter(vidtools.rename_output_file(sys.argv[i]), \
                                 int(video_in.get(cv2.CAP_PROP_FOURCC)), \
                                 video_in.get(cv2.CAP_PROP_FPS), \
                                 (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
