@@ -19,7 +19,7 @@
 #   Notes:
 #       Following google style guide here:
 #       https://google.github.io/styleguide/pyguide.html
-#	  
+#      
 ################################################################################
 
 #System imports
@@ -37,6 +37,7 @@ import lane_detect_processor as lanetools
 CAL_PATH = '.\\camera_cal'
 CAL_PTS_X = 9
 CAL_PTS_Y = 6
+LINES_TO_AVERAGE = 5
 
 #Code
 #Check for arguments
@@ -51,7 +52,7 @@ images = []
 for file in image_files:
     image = cv2.imread(CAL_PATH + '\\' + file)
     images.append(image)
-cal_matrix = lanetools.calibrate(images, CAL_PTS_X, CAL_PTS_Y)
+cal_mtx, cal_dist = lanetools.calibrate_camera(images, CAL_PTS_X, CAL_PTS_Y)
 
 #Iterate through video files
 for i in range(1, len(sys.argv)):
@@ -61,16 +62,25 @@ for i in range(1, len(sys.argv)):
                                 video_in.get(cv2.CAP_PROP_FPS), \
                                 (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
                                  int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+    #Create empty line arrays
+    left_lines = []
+    right_lines = []
     while(video_in.isOpened()):
         result, frame = video_in.read()
         if result==False:
             print("File completed: " + sys.argv[i])
             break
 
-        #TODO
-		#Process frame to find lines
-		#Average lines for smoothing
-		#Draw averaged lines on original image
+        #Process frame to find lines
+        left_line, right_line = lanetools.detect_lines(frame, cal_mtx, cal_dist)
+        #Average lines for smoothing
+        left_line = lanetools.average_lines(left_lines, \
+            left_line, \
+            LINES_TO_AVERAGE)
+        right_line = lanetools.average_lines(right_lines, \
+            right_line, \
+            LINES_TO_AVERAGE)
+        #Draw averaged lines on original image
 
         #Write new frame
         video_out.write(frame)

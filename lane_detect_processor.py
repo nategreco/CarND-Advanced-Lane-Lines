@@ -69,7 +69,7 @@ def average_lines(lines, new_line, num_to_keep): #TODO - Finish line class
     #TODO - Divide by detected
     return
 
-def calibrate(images, x_pts, y_pts):
+def calibrate_camera(images, x_pts, y_pts):
     #Assert all images are same shape
     assert(all(i.shape == images[0].shape) for i in images)
     #Prepare variables
@@ -91,19 +91,22 @@ def calibrate(images, x_pts, y_pts):
     #Check for succesful checkerboard detections
     assert(success_count != 0)
     print(success_count, " out of ", len(images), \
-	    " checkerboards detected, Calibration complete!")
+        " checkerboards detected, Calibration complete!")
     #Get matrix
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera( objpoints, \
         imgpoints, \
         gray.shape[::-1], None, None )
-    return mtx
+    return mtx, dist
 
-#Code
+def detect_lines(image, mtx, dist):
+    #Undistor image
+    dst = cv2.undistort(image, mtx, dist, None, mtx)
+    #Create lines
+    left_line = Line()
+    right_line = Line()
+    return left_line, right_line
 
 #TODO
-#Create lane class
-#Create lane averaging function
-#Create camera calibration function
 #Create process image function
     #Remove distortion from camera
     #Apply HLS thresholding
