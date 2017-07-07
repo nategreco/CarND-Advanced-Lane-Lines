@@ -47,14 +47,14 @@ SOBEL_X_UPPER_THRESH = 255
 SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
 SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
 #Calculate the birds eye view matrix transformation
-SRC = np.float32([[230, 720], \
-                  [635, 440], \
-                  [645, 440], \
-                  [1050, 720]])
-DST = np.float32([[230, 720], \
-                  [230, 0], \
-                  [1050, 0], \
-                  [1050, 720]])
+SRC = np.float32([[580, 500], \
+                  [757, 500], \
+                  [309, 700], \
+                  [1094, 700]])
+DST = np.float32([[280, 0], \
+                  [1094, 0], \
+                  [280, 720], \
+                  [1094, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 
 #Classes
