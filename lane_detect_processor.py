@@ -29,6 +29,16 @@ import cv2
 
 #Local project imports
 
+#Code
 
-
-
+#TODO
+#Create lane class
+#Create lane averaging function
+#Create camera calibration function
+#Create process image function
+	#Remove distortion from camera
+	#Apply HLS thresholding
+	#Apply Sobel thresholding
+	#Combine masks
+	#Alter perspective
+	#Fit polygons

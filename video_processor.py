@@ -24,7 +24,6 @@
 
 #System imports
 import sys
-import time
 
 #3rd party imports
 import cv2
@@ -39,6 +38,9 @@ if len(sys.argv) < 2:
     input("No arguments passed, press ENTER to exit...")
     quit()
 
+#TODO
+#Perform camera calibration
+
 for i in range(1, len(sys.argv)):
     video_in = cv2.VideoCapture(sys.argv[i])   
     video_out = cv2.VideoWriter(tools.rename_output_file(sys.argv[i]), \
@@ -51,14 +53,18 @@ for i in range(1, len(sys.argv)):
         if result==False:
             print("File completed: " + sys.argv[i])
             break
-        #Do some processing! - ToDo!
+
+        #TODO
+		#Process frame to find lines
+		#Average lines for smoothing
+		#Draw averaged lines on original image
 
         #Write new frame
         video_out.write(frame)
         #Display new frame
-        cv2.imshow('Results', frame)        
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        #cv2.imshow('Results', frame)        
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
     video_in.release()
     video_out.release()
 
