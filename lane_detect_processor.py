@@ -31,21 +31,21 @@ import numpy as np
 #Local project imports
 
 #Constants
-ROI_SF = np.array([[(0.00, 1.00), \
-                    (0.00, 0.95), \
-                    (0.45, 0.60), \
-                    (0.55, 0.60), \
-                    (1.00, 0.95), \
-                    (1.00, 1.00)]], \
+ROI_SF = np.array([[(0.00, 0.95), \
+                    #(0.10, 0.80), \
+                    (0.43, 0.62), \
+                    (0.57, 0.62), \
+                    #(0.90, 0.80), \
+                    (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH = (0, 40, 80)
-WHITE_UPPER_THRESH = (180, 255, 255)
-YELLOW_LOWER_THRESH = (0, 0, 80)
-YELLOW_UPPER_THRESH = (90, 255, 255)
-SOBEL_X_LOWER_THRESH = 0
+WHITE_LOWER_THRESH = np.array([0, 50, 10])
+WHITE_UPPER_THRESH = np.array([180, 255, 255])
+YELLOW_LOWER_THRESH = np.array([5, 10, 45])
+YELLOW_UPPER_THRESH = np.array([55, 255, 255])
+SOBEL_X_LOWER_THRESH = 15
 SOBEL_X_UPPER_THRESH = 255
-SOBEL_Y_LOWER_THRESH = 0
-SOBEL_Y_UPPER_THRESH = 255
+SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
+SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
@@ -99,6 +99,35 @@ def extract_roi(image): #TODO - Incomplete
     masked_image = cv2.bitwise_and(image, mask)
     return masked_image
 
+def trim_roi(image, pixels): #TODO - Incomplete
+    """
+    This function trims the image's ROI to reduce any false gradients
+    created by the edge of the ROI.
+    """
+    #Create blank mask
+    mask = np.zeros_like(image)   
+    #Fill based on number of channels
+    if len(image.shape) > 2:
+        channel_count = image.shape[2]  # i.e. 3 or 4 depending on your image
+        ignore_mask_color = (255,) * channel_count
+    else:
+        ignore_mask_color = 255
+    #Scale ROI vertices
+    vertices = np.copy(ROI_SF)
+    for i in range(0, len(vertices[0])):
+        vertices[0][i][0] *= float(image.shape[1])
+        vertices[0][i][1] *= float(image.shape[0])
+    vertices = vertices.astype(int)
+    #Fill polygon created by roi vertices
+    cv2.fillPoly(mask, vertices, ignore_mask_color)
+    #Erode the mask by pixel count
+    assert(pixels % 2 != 0) #Check for odd kernel size
+    kernel = np.ones((pixels,pixels), np.uint8)
+    mask = cv2.erode(mask, kernel)
+    #returning the image only where mask pixels are nonzero
+    masked_image = cv2.bitwise_and(image, mask)
+    return masked_image
+
 def average_lines(lines, new_line, num_to_keep): #TODO - Finish line class
     lines.append(new_line)
     #Check size of list
@@ -143,53 +172,53 @@ def calibrate_camera(images, x_pts, y_pts):
     return mtx, dist
 
 def hls_threshold(image): #TODO - Incomplete
-    hls = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
+    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     #White threshold
     white_binary = cv2.inRange(hls, WHITE_LOWER_THRESH, WHITE_UPPER_THRESH)
     #Yellow_threshold
     yellow_binary = cv2.inRange(hls, YELLOW_LOWER_THRESH, YELLOW_UPPER_THRESH)
     #Combine masks
-    mask = np.zeros_like(white_binary)
-    mask[(white_binary == 1) | (yellow_binary == 1)] = 1
+    mask = cv2.bitwise_or(white_binary, yellow_binary)
     return mask
 
 def gradient_threshold(image): #TODO - Incomplete
     #Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #Get derivative with respect to x
     sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
     abs_sobel_x = np.absolute(sobel_x)
-    scaled_sobel_x = np.uint8(255*abs_sobel_x/np.max(abs_sobel_x))
+    scaled_sobel_x = np.uint8(255 * abs_sobel_x / np.max(abs_sobel_x))
     #Threshold
-    sxbinary = np.zeros_like(scaled_sobel_x)
-    sxbinary[(scaled_sobel_x >= SOBEL_X_LOWER_THRESH) & \
-        (scaled_sobel_x <= SOBEL_X_UPPER_THRESH)] = 1
+    sxbinary = cv2.inRange(scaled_sobel_x, SOBEL_X_LOWER_THRESH, SOBEL_X_UPPER_THRESH)
     #Get derivative with respect to y - maybe unecessary?
     sobel_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1)
     abs_sobel_y = np.absolute(sobel_y)
-    scaled_sobel_y = np.uint8(255*abs_sobel_y/np.max(abs_sobel_y))
+    scaled_sobel_y = np.uint8(255 * abs_sobel_y / np.max(abs_sobel_y))
     #Threshold
-    sybinary = np.zeros_like(scaled_sobel_y)
-    sybinary[(scaled_sobel_y >= SOBEL_Y_LOWER_THRESH) & \
-        (scaled_sobel_y <= SOBEL_Y_UPPER_THRESH)] = 1
+    sybinary = cv2.inRange(scaled_sobel_y, SOBEL_Y_LOWER_THRESH, SOBEL_Y_UPPER_THRESH)
     #Combine masks
-    mask = np.zeros_like(sxbinary)
-    mask[(sxbinary == 1) | (sybinary == 1)] = 1
+    mask = cv2.bitwise_or(sxbinary, sybinary)
     return mask
 
 def detect_lines(image, mtx, dist): #TODO - Incomplete
-    #Extract ROI
-    roi_image = extract_roi(image)
+    #Work with working copy
+    working_image = image.copy()
+    #Normalize imaeg
+    cv2.normalize(working_image, working_image, 0, 255, cv2.NORM_MINMAX)
     #Undistort image
-    true_image = cv2.undistort(roi_image, mtx, dist, None, mtx)
+    working_image = image = cv2.undistort(working_image, mtx, dist, None, mtx)
+    #Extract ROI
+    working_image = extract_roi(working_image)
     #Color threshold
-    color_mask = hls_threshold(true_image)
+    color_mask = hls_threshold(working_image)
     #Sobel threshold
-    gradient_mask = gradient_threshold(true_image)
+    gradient_mask = gradient_threshold(working_image)
+    #Trim gradient mask to remove false edges
+    gradient_mask = trim_roi(gradient_mask, 3)
     #Combine masks
-    binary = np.zeros_like(color_mask)
-    binary[(color_mask == 1) & (gradient_mask == 1)] = 1
+    mask = cv2.bitwise_and(color_mask, gradient_mask)
     #Create lines
     left_line = Line()
     right_line = Line()
-    return left_line, right_line
+    test_image = cv2.bitwise_and(image, cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR))
+    return left_line, right_line, test_image

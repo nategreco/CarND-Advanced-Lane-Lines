@@ -58,10 +58,10 @@ cal_mtx, cal_dist = lanetools.calibrate_camera(images, CAL_PTS_X, CAL_PTS_Y)
 for i in range(1, len(sys.argv)):
     video_in = cv2.VideoCapture(sys.argv[i])   
     video_out = cv2.VideoWriter(vidtools.rename_output_file(sys.argv[i]), \
-                                int(video_in.get(cv2.CAP_PROP_FOURCC)), \
-                                video_in.get(cv2.CAP_PROP_FPS), \
-                                (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
-                                 int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+        int(video_in.get(cv2.CAP_PROP_FOURCC)), \
+        video_in.get(cv2.CAP_PROP_FPS), \
+        (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
+         int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     #Create empty line arrays
     left_lines = []
     right_lines = []
@@ -72,7 +72,10 @@ for i in range(1, len(sys.argv)):
             break
 
         #Process frame to find lines
-        left_line, right_line = lanetools.detect_lines(frame, cal_mtx, cal_dist)
+        left_line, right_line, test_image = \
+            lanetools.detect_lines(frame, \
+            cal_mtx, \
+            cal_dist)
         #Average lines for smoothing
         left_line = lanetools.average_lines(left_lines, \
             left_line, \
@@ -85,9 +88,9 @@ for i in range(1, len(sys.argv)):
         #Write new frame
         video_out.write(frame)
         #Display new frame
-        #cv2.imshow('Results', frame)        
-        #if cv2.waitKey(1) & 0xFF == ord('q'):
-        #    break
+        cv2.imshow('Results', test_image)        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
     video_in.release()
     video_out.release()
 
