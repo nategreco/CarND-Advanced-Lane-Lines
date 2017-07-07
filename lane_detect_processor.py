@@ -177,12 +177,11 @@ def gradient_threshold(image): #TODO - Incomplete
     mask[(sxbinary == 1) | (sybinary == 1)] = 1
     return mask
 
-
 def detect_lines(image, mtx, dist): #TODO - Incomplete
-    #Extract ROI - TODO
-    image = extract_roi(image)
+    #Extract ROI
+    roi_image = extract_roi(image)
     #Undistort image
-    true_image = cv2.undistort(image, mtx, dist, None, mtx)
+    true_image = cv2.undistort(roi_image, mtx, dist, None, mtx)
     #Color threshold
     color_mask = hls_threshold(true_image)
     #Sobel threshold
