@@ -301,9 +301,12 @@ def plot_lines(image, left_line, right_line):
     plot = figure.add_subplot(111)
     #Place image on plot
     if len(image.shape) != 3: #Check if gray or color image!
-        image = np.dstack((image, image, image)) * 255    
+        image = np.dstack((image, image, image)) * 255
     plot.imshow(image)
-    plot.axis("off")
+    plot.axis('off')
+    plot.axes.get_xaxis().set_visible(False)
+    plot.axes.get_yaxis().set_visible(False)
+    plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
     #Generate x and y values for plotting
     ploty = np.linspace(0, image.shape[0]-1, image.shape[0])
     left_fitx = left_line.current_fit[0] * ploty**2 + \
@@ -312,8 +315,8 @@ def plot_lines(image, left_line, right_line):
     right_fitx = right_line.current_fit[0] * ploty**2 + \
                  right_line.current_fit[1] * ploty + \
                  right_line.current_fit[2]    
-    plot.plot(left_fitx, ploty, color='yellow')
-    plot.plot(right_fitx, ploty, color='yellow')
+    plot.plot(left_fitx, ploty, color='yellow', linewidth=5.0)
+    plot.plot(right_fitx, ploty, color='yellow', linewidth=5.0)
     plt.xlim(0, image.shape[1])
     plt.ylim(image.shape[0], 0)
     #Draw the renderer
