@@ -59,8 +59,8 @@ DST = np.float32([[280, 0], \
                   [280, 720], \
                   [1094, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
-NUM_WINDOWS = 10
-WINDOW_WIDTH = 200
+NUM_WINDOWS = 4
+WINDOW_WIDTH = 150
 MIN_PIXELS = 50
 
 #Classes
@@ -227,7 +227,7 @@ def fit_lines(image):
     histogram = np.sum(image[image.shape[0] // 2:,:], axis=0)
     #Sliding window methodology
     #Create an output image to draw on and  visualize the result
-    out_img = np.dstack((image, image, image)) * 255
+    output_image = np.dstack((image, image, image)) * 255
     window_height = np.int(image.shape[0] / NUM_WINDOWS)
     #Identify the x and y positions of all nonzero pixels in the image
     nonzero = image.nonzero()
@@ -250,12 +250,12 @@ def fit_lines(image):
         win_xright_low = int(rightx_current - WINDOW_WIDTH / 2)
         win_xright_high = int(rightx_current + WINDOW_WIDTH / 2)
         #Draw the windows on the visualization image
-        cv2.rectangle(out_img, \
+        cv2.rectangle(output_image, \
                       (win_xleft_low, win_y_low), \
                       (win_xleft_high, win_y_high), \
                       (0, 255, 0), \
                       2)
-        cv2.rectangle(out_img, \
+        cv2.rectangle(output_image, \
                       (win_xright_low, win_y_low), \
                       (win_xright_high, win_y_high),\
                       (0, 255, 0), \
@@ -277,11 +277,52 @@ def fit_lines(image):
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
         if len(good_right_inds) > MIN_PIXELS:        
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
-    #TODO - Polyfits of left/right line
-    #Return lines
-    left_poly = []
-    right_poly = []
-    return left_poly, right_poly
+    #Concatenate the arrays of indices
+    left_lane_inds = np.concatenate(left_lane_inds)
+    right_lane_inds = np.concatenate(right_lane_inds)
+    #Extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds] 
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds] 
+    #Fit a second order polynomial to each
+    left_poly = np.polyfit(lefty, leftx, 2)
+    right_poly = np.polyfit(righty, rightx, 2)
+    return left_poly, right_poly, output_image
+
+def plot_lines(image, left_line, right_line):
+    #Check image resolution evenly divides by dpi
+    dpi = 80
+    assert((image.shape[0] % dpi == 0) & (image.shape[1] % dpi == 0))
+    #Generate a figure with matplotlib
+    figure = plt.figure(num=None, \
+                        figsize=(int(image.shape[1] / dpi), int(image.shape[0] / dpi)), \
+                        dpi=dpi)
+    plot = figure.add_subplot(111)
+    #Place image on plot
+    if len(image.shape) != 3: #Check if gray or color image!
+        image = np.dstack((image, image, image)) * 255    
+    plot.imshow(image)
+    plot.axis("off")
+    #Generate x and y values for plotting
+    ploty = np.linspace(0, image.shape[0]-1, image.shape[0])
+    left_fitx = left_line.current_fit[0] * ploty**2 + \
+                left_line.current_fit[1] * ploty + \
+                left_line.current_fit[2]
+    right_fitx = right_line.current_fit[0] * ploty**2 + \
+                 right_line.current_fit[1] * ploty + \
+                 right_line.current_fit[2]    
+    plot.plot(left_fitx, ploty, color='yellow')
+    plot.plot(right_fitx, ploty, color='yellow')
+    plt.xlim(0, image.shape[1])
+    plt.ylim(image.shape[0], 0)
+    #Draw the renderer
+    figure.canvas.draw()
+    #Get the RGB buffer from the figure
+    output_image = np.fromstring (figure.canvas.tostring_rgb(), dtype=np.uint8)
+    output_image.shape = (image.shape[0], image.shape[1], 3)
+    output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR)
+    return output_image
 
 def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Work with working copy
@@ -305,7 +346,7 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    left_poly, right_poly = fit_lines(bev_image)
+    left_poly, right_poly, visual_image = fit_lines(bev_image)
     left_line.current_fit = left_poly
     right_line.current_fit = right_poly
     #Create output image
@@ -315,5 +356,6 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
     #output_image = binary
-    output_image = bev_image
+    #output_image = bev_image
+    output_image = plot_lines(visual_image, left_line, right_line)
     return left_line, right_line, output_image
