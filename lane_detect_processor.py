@@ -39,8 +39,10 @@ ROI_SF = np.array([[(0.00, 0.95), \
                     #(0.90, 0.80), \
                     (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH = np.array([0, 40, 6])
-WHITE_UPPER_THRESH = np.array([180, 255, 255])
+WHITE_LOWER_THRESH_1 = np.array([0, 10, 6])
+WHITE_UPPER_THRESH_1 = np.array([30, 255, 255])
+WHITE_LOWER_THRESH_2 = np.array([150, 10, 6]) #Should be same as 1 except Hue
+WHITE_UPPER_THRESH_2 = np.array([180, 255, 255]) #Should be same as 1 except Hue
 YELLOW_LOWER_THRESH = np.array([5, 10, 45])
 YELLOW_UPPER_THRESH = np.array([55, 255, 255])
 SOBEL_X_LOWER_THRESH = 20
@@ -192,7 +194,9 @@ def calibrate_camera(images, x_pts, y_pts):
 def hls_threshold(image):
     hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     #White threshold
-    white_binary = cv2.inRange(hls, WHITE_LOWER_THRESH, WHITE_UPPER_THRESH)
+    white_binary_1 = cv2.inRange(hls, WHITE_LOWER_THRESH_1, WHITE_UPPER_THRESH_1)
+    white_binary_2 = cv2.inRange(hls, WHITE_LOWER_THRESH_2, WHITE_UPPER_THRESH_2)
+    white_binary = cv2.bitwise_or(white_binary_1, white_binary_2)
     #Yellow_threshold
     yellow_binary = cv2.inRange(hls, YELLOW_LOWER_THRESH, YELLOW_UPPER_THRESH)
     #Combine masks
@@ -247,24 +251,24 @@ def fit_lines(image):
         win_xright_high = int(rightx_current + WINDOW_WIDTH / 2)
         #Draw the windows on the visualization image
         cv2.rectangle(out_img, \
-		              (win_xleft_low, win_y_low), \
-			          (win_xleft_high, win_y_high), \
-			          (0, 255, 0), \
-			          2)
+                      (win_xleft_low, win_y_low), \
+                      (win_xleft_high, win_y_high), \
+                      (0, 255, 0), \
+                      2)
         cv2.rectangle(out_img, \
-		              (win_xright_low, win_y_low), \
-			          (win_xright_high, win_y_high),\
-			          (0, 255, 0), \
-			          2)
+                      (win_xright_low, win_y_low), \
+                      (win_xright_high, win_y_high),\
+                      (0, 255, 0), \
+                      2)
         #Identify the nonzero pixels in x and y within the window
         good_left_inds = ((nonzeroy >= win_y_low) & \
-		                  (nonzeroy < win_y_high) & \
-						  (nonzerox >= win_xleft_low) \
-						  & (nonzerox < win_xleft_high)).nonzero()[0]
+                          (nonzeroy < win_y_high) & \
+                          (nonzerox >= win_xleft_low) \
+                          & (nonzerox < win_xleft_high)).nonzero()[0]
         good_right_inds = ((nonzeroy >= win_y_low) & \
-		                   (nonzeroy < win_y_high) & \
-						   (nonzerox >= win_xright_low) & \
-						   (nonzerox < win_xright_high)).nonzero()[0]
+                           (nonzeroy < win_y_high) & \
+                           (nonzerox >= win_xright_low) & \
+                           (nonzerox < win_xright_high)).nonzero()[0]
         #Append these indices to the lists
         left_lane_inds.append(good_left_inds)
         right_lane_inds.append(good_right_inds)
@@ -273,7 +277,7 @@ def fit_lines(image):
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
         if len(good_right_inds) > MIN_PIXELS:        
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
-	#TODO - Polyfits of left/right line
+    #TODO - Polyfits of left/right line
     #Return lines
     left_poly = []
     right_poly = []
@@ -285,13 +289,13 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Normalize imaeg
     cv2.normalize(working_image, working_image, 0, 255, cv2.NORM_MINMAX)
     #Undistort image
-    working_image = cv2.undistort(working_image, mtx, dist, None, mtx)
+    true_image = cv2.undistort(working_image, mtx, dist, None, mtx)
     #Extract ROI
-    working_image = extract_roi(working_image)
+    roi_image = extract_roi(true_image)
     #Color threshold
-    color_mask = hls_threshold(working_image)
+    color_mask = hls_threshold(roi_image)
     #Sobel threshold
-    gradient_mask = gradient_threshold(working_image)
+    gradient_mask = gradient_threshold(roi_image)
     #Trim gradient mask to remove false edges
     gradient_mask = trim_roi(gradient_mask, 3)
     #Combine masks
@@ -307,6 +311,8 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Create output image
     output_image = cv2.undistort(image, mtx, dist, None, mtx)
     #Temporary test image
+    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(color_mask, cv2.COLOR_GRAY2BGR))
+    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
     #output_image = binary
     output_image = bev_image
