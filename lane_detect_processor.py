@@ -63,6 +63,7 @@ INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 NUM_WINDOWS = 4
 WINDOW_WIDTH = 150
 MIN_PIXELS = 50
+LINE_THICKNESS = 10.0
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
@@ -318,8 +319,8 @@ def plot_lines(image, left_line, right_line):
     right_fitx = right_line.current_fit[0] * ploty**2 + \
                  right_line.current_fit[1] * ploty + \
                  right_line.current_fit[2]    
-    plot.plot(left_fitx, ploty, color='blue', linewidth=10.0)
-    plot.plot(right_fitx, ploty, color='blue', linewidth=10.0)
+    plot.plot(left_fitx, ploty, color='blue', linewidth=LINE_THICKNESS)
+    plot.plot(right_fitx, ploty, color='blue', linewidth=LINE_THICKNESS)
     plt.xlim(0, image.shape[1])
     plt.ylim(image.shape[0], 0)
     #Draw the renderer
@@ -328,14 +329,51 @@ def plot_lines(image, left_line, right_line):
     output_image = np.fromstring (figure.canvas.tostring_rgb(), dtype=np.uint8)
     output_image.shape = (image.shape[0], image.shape[1], 3)
     output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR)
+	#Transform back to origianl perspective
+    output_image = cv2.warpPerspective(output_image, \
+                                       INV_MATRIX, \
+                                       (image.shape[1], image.shape[0]))
     return output_image
 
 def combine_images(bottom, top):
+    assert(bottom.shape == top.shape)
     #Overlay method
-    output_image = cv2.addWeighted(bottom, 1.0, top, 1.0, gamma=0.0)
-    #Mask method
-    #TODO
+    #output_image = cv2.addWeighted(bottom, 1.0, top, 1.0, gamma=0.0)
+    #Non-zero pixel method
+    nonzero = top.nonzero()
+    output_image = bottom
+    for i in range(len(nonzero[0])):
+        output_image[nonzero[0][i]][nonzero[1][i]] = \
+            top[nonzero[0][i]][nonzero[1][i]]
     return output_image
+
+def shade_lines(image, left_line, right_line):
+    #Check that two valid lines exist
+    #if !(left_line.detected & right_line.detected): return image
+    shade_image = np.zeros_like(image)
+    line_image = plot_lines(shade_image, left_line, right_line)
+    shade_color = [0, 255, 0]
+    left_switch = False
+    right_switch = False
+    for i in range(0, image.shape[0]):
+        left_switch = False
+        right_switch = False
+        for j in range(0, image.shape[1]):
+            if left_switch: shade_image[i][j] = shade_color
+            if (not left_switch) & (not right_switch) & np.any(line_image[i][j] != 0):
+                left_switch = True
+            elif left_switch & (not right_switch) & np.all(line_image[i][j] == 0):
+                right_switch = True
+            elif left_switch & right_switch & np.any(line_image[i][j] != 0):
+                break
+            elif left_switch & right_switch & (j == (image.shape[1] - 1)):
+                 shade_image[i].fill(0)
+    #Shade lane area
+    output_image = cv2.addWeighted(image, 1.0, shade_image, 1.0, gamma=0.0)
+    #Draw lines
+    output_image = combine_images(output_image, line_image)
+    return output_image
+
 
 def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Work with working copy
@@ -363,11 +401,7 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     left_line.current_fit = left_poly
     right_line.current_fit = right_poly
     #Create output image
-    line_image = plot_lines(np.zeros_like(true_image), left_line, right_line)
-    line_image = cv2.warpPerspective(line_image, \
-                                     INV_MATRIX, \
-                                     (line_image.shape[1], line_image.shape[0]))
-    output_image = combine_images(true_image, line_image)
+    output_image = shade_lines(true_image, left_line, right_line)
     #Temporary test image
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(color_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
