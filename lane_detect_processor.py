@@ -59,6 +59,7 @@ DST = np.float32([[280, 0], \
                   [280, 720], \
                   [1094, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
+INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 NUM_WINDOWS = 4
 WINDOW_WIDTH = 150
 MIN_PIXELS = 50
@@ -302,6 +303,8 @@ def plot_lines(image, left_line, right_line):
     #Place image on plot
     if len(image.shape) != 3: #Check if gray or color image!
         image = np.dstack((image, image, image)) * 255
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     plot.imshow(image)
     plot.axis('off')
     plot.axes.get_xaxis().set_visible(False)
@@ -315,8 +318,8 @@ def plot_lines(image, left_line, right_line):
     right_fitx = right_line.current_fit[0] * ploty**2 + \
                  right_line.current_fit[1] * ploty + \
                  right_line.current_fit[2]    
-    plot.plot(left_fitx, ploty, color='yellow', linewidth=5.0)
-    plot.plot(right_fitx, ploty, color='yellow', linewidth=5.0)
+    plot.plot(left_fitx, ploty, color='blue', linewidth=10.0)
+    plot.plot(right_fitx, ploty, color='blue', linewidth=10.0)
     plt.xlim(0, image.shape[1])
     plt.ylim(image.shape[0], 0)
     #Draw the renderer
@@ -325,6 +328,13 @@ def plot_lines(image, left_line, right_line):
     output_image = np.fromstring (figure.canvas.tostring_rgb(), dtype=np.uint8)
     output_image.shape = (image.shape[0], image.shape[1], 3)
     output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR)
+    return output_image
+
+def combine_images(bottom, top):
+    #Overlay method
+    output_image = cv2.addWeighted(bottom, 1.0, top, 1.0, gamma=0.0)
+    #Mask method
+    #TODO
     return output_image
 
 def detect_lines(image, mtx, dist): #TODO - Incomplete
@@ -353,12 +363,16 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     left_line.current_fit = left_poly
     right_line.current_fit = right_poly
     #Create output image
-    output_image = cv2.undistort(image, mtx, dist, None, mtx)
+    line_image = plot_lines(np.zeros_like(true_image), left_line, right_line)
+    line_image = cv2.warpPerspective(line_image, \
+                                     INV_MATRIX, \
+                                     (line_image.shape[1], line_image.shape[0]))
+    output_image = combine_images(true_image, line_image)
     #Temporary test image
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(color_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
     #output_image = binary
     #output_image = bev_image
-    output_image = plot_lines(visual_image, left_line, right_line)
+    #output_image = plot_lines(visual_image, left_line, right_line)
     return left_line, right_line, output_image
