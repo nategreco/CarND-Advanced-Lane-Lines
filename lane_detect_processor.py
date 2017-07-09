@@ -63,7 +63,7 @@ INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 NUM_WINDOWS = 4
 WINDOW_WIDTH = 150
 MIN_PIXELS = 50
-LINE_THICKNESS = 10.0
+LINE_THICKNESS = 10
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
@@ -292,49 +292,6 @@ def fit_lines(image):
     right_poly = np.polyfit(righty, rightx, 2)
     return left_poly, right_poly, output_image
 
-def plot_lines(image, left_line, right_line):
-    #Check image resolution evenly divides by dpi
-    dpi = 80
-    assert((image.shape[0] % dpi == 0) & (image.shape[1] % dpi == 0))
-    #Generate a figure with matplotlib
-    figure = plt.figure(num=None, \
-                        figsize=(int(image.shape[1] / dpi), int(image.shape[0] / dpi)), \
-                        dpi=dpi)
-    plot = figure.add_subplot(111)
-    #Place image on plot
-    if len(image.shape) != 3: #Check if gray or color image!
-        image = np.dstack((image, image, image)) * 255
-    else:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    plot.imshow(image)
-    plot.axis('off')
-    plot.axes.get_xaxis().set_visible(False)
-    plot.axes.get_yaxis().set_visible(False)
-    plt.tight_layout(pad=0.0, w_pad=0.0, h_pad=0.0)
-    #Generate x and y values for plotting
-    ploty = np.linspace(0, image.shape[0]-1, image.shape[0])
-    left_fitx = left_line.current_fit[0] * ploty**2 + \
-                left_line.current_fit[1] * ploty + \
-                left_line.current_fit[2]
-    right_fitx = right_line.current_fit[0] * ploty**2 + \
-                 right_line.current_fit[1] * ploty + \
-                 right_line.current_fit[2]    
-    plot.plot(left_fitx, ploty, color='blue', linewidth=LINE_THICKNESS)
-    plot.plot(right_fitx, ploty, color='blue', linewidth=LINE_THICKNESS)
-    plt.xlim(0, image.shape[1])
-    plt.ylim(image.shape[0], 0)
-    #Draw the renderer
-    figure.canvas.draw()
-    #Get the RGB buffer from the figure
-    output_image = np.fromstring (figure.canvas.tostring_rgb(), dtype=np.uint8)
-    output_image.shape = (image.shape[0], image.shape[1], 3)
-    output_image = cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR)
-    #Transform back to origianl perspective
-    output_image = cv2.warpPerspective(output_image, \
-                                       INV_MATRIX, \
-                                       (image.shape[1], image.shape[0]))
-    return output_image
-
 def combine_images(bottom, top):
     assert(bottom.shape == top.shape)
     #Overlay method
@@ -362,13 +319,13 @@ def shade_lines(image, left_line, right_line):
     x1 = left_fitx(y)
     x2 = right_fitx(y)
     #Create line points
-    points1 = np.array([[[xi, yi]] for xi, yi in zip(x1, y) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
-    points2 = np.array([[[xi, yi]] for xi, yi in zip(x2, y) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
+    left_points = np.array([[[xi, yi]] for xi, yi in zip(x1, y) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
+    right_points = np.array([[[xi, yi]] for xi, yi in zip(x2, y) if (0<=xi<w and 0<=yi<h)]).astype(np.int32)
     #Create polygon
-    points = np.concatenate((points1, np.flip(points2, 0)))
+    points = np.concatenate((left_points, np.flip(right_points, 0)))
     polygon = cv2.convexHull(points)
     #Fill area
-    shade_color = [0, 255, 0]
+    shade_color = [0, 255, 0] #Green
     shade_image = np.zeros_like(image)
     cv2.fillPoly(shade_image, [points], shade_color)
     #Transform back to origianl perspective
@@ -377,7 +334,17 @@ def shade_lines(image, left_line, right_line):
                                       (image.shape[1], image.shape[0]))
     #Shade lane area
     output_image = cv2.addWeighted(image, 1.0, shade_image, 1.0, gamma=0.0)
-    return shade_image #output_image
+    #Draw lines
+    line_color = [255, 0, 0] #Blue
+    line_image = np.zeros_like(image)
+    cv2.drawContours(line_image, left_points, -1, line_color, LINE_THICKNESS)
+    cv2.drawContours(line_image, right_points, -1, line_color, LINE_THICKNESS)
+    #Transform back to origianl perspective
+    line_image = cv2.warpPerspective(line_image, \
+                                      INV_MATRIX, \
+                                      (image.shape[1], image.shape[0]))
+    output_image = combine_images(output_image, line_image)
+    return output_image
 
 def detect_lines(image, mtx, dist): #TODO - Incomplete
     #Work with working copy
@@ -406,14 +373,10 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     right_line.current_fit = right_poly
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
-    output_image = combine_images(output_image, \
-                                  plot_lines(np.zeros_like(output_image), \
-                                             left_line, right_line))
     #Temporary test image
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(color_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
     #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
     #output_image = binary
     #output_image = bev_image
-    #output_image = plot_lines(visual_image, left_line, right_line)
     return left_line, right_line, output_image
