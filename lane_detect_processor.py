@@ -90,10 +90,15 @@ class Line(): #TODO - Just copied from Udacity course
         self.allx = None  
         #y values for detected line pixels
         self.ally = None
+    def update(self, y, x):
+        if x.size != 0:
+            self.current_fit = np.polyfit(y, x, 2)
+            self.detected = True
+        else:
+            self.current_fit = []
+            self.detected = False
 
 #Global variables
-left_line = Line()
-right_line = Line()
 
 #Functions
 def extract_roi(image):
@@ -230,7 +235,7 @@ def gradient_threshold(image):
     mask = cv2.bitwise_or(sxbinary, sybinary)
     return mask
 
-def fit_lines(image):
+def fit_lines(image, left_line, right_line):
     #Take a histogram of the bottom half of the image
     histogram = np.sum(image[image.shape[0] // 2:,:], axis=0)
     #Sliding window methodology
@@ -294,14 +299,12 @@ def fit_lines(image):
     rightx = nonzerox[right_lane_inds]
     righty = nonzeroy[right_lane_inds] 
     #Fit a second order polynomial to each
-    left_poly = np.polyfit(lefty, leftx, 2)
-    right_poly = np.polyfit(righty, rightx, 2)
-    return left_poly, right_poly, output_image
+    left_line.update(lefty, leftx)
+    right_line.update(righty, rightx)
+    return output_image
 
 def combine_images(bottom, top):
     assert(bottom.shape == top.shape)
-    #Overlay method
-    #output_image = cv2.addWeighted(bottom, 1.0, top, 1.0, gamma=0.0)
     #Non-zero pixel method
     nonzero = top.nonzero()
     output_image = bottom
@@ -311,41 +314,49 @@ def combine_images(bottom, top):
     return output_image
 
 def shade_lines(image, left_line, right_line):
-    #Check lines detected - TODO
-    if not (left_line.detected & right_line.detected): return image
+    #Setup output image
+    output_image = image.copy()
     #Define lines
     y = np.arange(image.shape[0])
-    left_fitx = lambda y: left_line.current_fit[0] * y**2 + \
-                          left_line.current_fit[1] * y + \
-                          left_line.current_fit[2]
-    right_fitx = lambda y: right_line.current_fit[0] * y**2 + \
-                           right_line.current_fit[1] * y + \
-                           right_line.current_fit[2]
-    x1 = left_fitx(y)
-    x2 = right_fitx(y)
-    #Create line points
-    left_points = np.array([[[xi, yi]] for xi, yi in zip(x1, y) \
-        if (0<=xi<image.shape[1] and 0<=yi<image.shape[0])]).astype(np.int32)
-    right_points = np.array([[[xi, yi]] for xi, yi in zip(x2, y) \
-        if (0<=xi<image.shape[1] and 0<=yi<image.shape[0])]).astype(np.int32)
-    #Create polygon
-    points = np.concatenate((left_points, np.flip(right_points, 0)))
-    polygon = cv2.convexHull(points)
-    #Fill area
-    shade_color = [0, 255, 0] #Green
-    shade_image = np.zeros_like(image)
-    cv2.fillPoly(shade_image, [points], shade_color)
-    #Transform back to origianl perspective
-    shade_image = cv2.warpPerspective(shade_image, \
-                                      INV_MATRIX, \
-                                      (image.shape[1], image.shape[0]))
-    #Shade lane area
-    output_image = cv2.addWeighted(image, 1.0, shade_image, 1.0, gamma=0.0)
+    left_points = np.ndarray(shape=(0,0), dtype=int)
+    right_points = np.ndarray(shape=(0,0), dtype=int)
+    #Left line if polynomial defined
+    if len(left_line.current_fit) == 3:
+        left_fitx = lambda y: left_line.current_fit[0] * y**2 + \
+                              left_line.current_fit[1] * y + \
+                              left_line.current_fit[2]
+        x1 = left_fitx(y)
+        left_points = np.array([[[xi, yi]] for xi, yi in zip(x1, y) \
+            if (0<=xi<image.shape[1] and 0<=yi<image.shape[0])]).astype(np.int32)
+    #Right line if polynomial defined
+    if len(right_line.current_fit) == 3:
+        right_fitx = lambda y: right_line.current_fit[0] * y**2 + \
+                               right_line.current_fit[1] * y + \
+                               right_line.current_fit[2]
+        x2 = right_fitx(y)
+        right_points = np.array([[[xi, yi]] for xi, yi in zip(x2, y) \
+            if (0<=xi<image.shape[1] and 0<=yi<image.shape[0])]).astype(np.int32)
+    #If both lines present, shade area
+    if (left_points.size != 0) & (right_points.size != 0):
+        #Create polygon
+        points = np.concatenate((left_points, np.flip(right_points, 0)))
+        #Fill area
+        shade_color = [0, 255, 0] #Green
+        shade_image = np.zeros_like(image)
+        cv2.fillPoly(shade_image, [points], shade_color)
+        #Transform back to origianl perspective
+        shade_image = cv2.warpPerspective(shade_image, \
+                                          INV_MATRIX, \
+                                          (image.shape[1], image.shape[0]))
+        #Shade lane area
+        output_image = cv2.addWeighted(image, 1.0, shade_image, 1.0, gamma=0.0)
     #Draw lines
     line_color = [255, 0, 0] #Blue
     line_image = np.zeros_like(image)
-    cv2.drawContours(line_image, left_points, -1, line_color, LINE_THICKNESS)
-    cv2.drawContours(line_image, right_points, -1, line_color, LINE_THICKNESS)
+    if left_points.size != 0:
+        cv2.drawContours(line_image, left_points, -1, line_color, LINE_THICKNESS)
+    if right_points.size != 0:
+        cv2.drawContours(line_image, right_points, -1, line_color, LINE_THICKNESS)
     #Transform back to origianl perspective
     line_image = cv2.warpPerspective(line_image, \
                                       INV_MATRIX, \
@@ -409,7 +420,7 @@ def draw_status(image, left_line, right_line):
                 2)
     return image
 
-def detect_lines(image, mtx, dist): #TODO - Incomplete
+def detect_lines(image, mtx, dist, left_line, right_line):
     #Work with working copy
     working_image = image.copy()
     #Normalize imaeg
@@ -431,9 +442,7 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    left_poly, right_poly, visual_image = fit_lines(bev_image)
-    left_line.current_fit = left_poly
-    right_line.current_fit = right_poly
+    visual_image = fit_lines(bev_image, left_line, right_line)
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
     output_image = draw_status(output_image, left_line, right_line)
@@ -444,4 +453,4 @@ def detect_lines(image, mtx, dist): #TODO - Incomplete
     #output_image = binary
     #output_image = bev_image
     #output_image = visual_image
-    return left_line, right_line, output_image
+    return output_image
