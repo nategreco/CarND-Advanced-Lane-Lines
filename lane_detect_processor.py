@@ -71,7 +71,7 @@ PIXEL_TO_M_Y = 30 / 720 #30m / 720 pixels
 class Line(): #TODO - Just copied from Udacity course
     def __init__(self):
         # was the line detected in the last iteration?
-        self.detected = False  
+        self.detected = True  
         # x values of the last n fits of the line
         self.recent_xfitted = [] 
         #average x values of the fitted line over the last n iterations
@@ -312,7 +312,7 @@ def combine_images(bottom, top):
 
 def shade_lines(image, left_line, right_line):
     #Check lines detected - TODO
-    #if not (left_line.detected & right_line.detected): return image
+    if not (left_line.detected & right_line.detected): return image
     #Define lines
     y = np.arange(image.shape[0])
     left_fitx = lambda y: left_line.current_fit[0] * y**2 + \
@@ -354,13 +354,14 @@ def shade_lines(image, left_line, right_line):
     return output_image
 
 def get_radius(line_poly, y):
+    #Returns the radius created by a 2nd order polynomial
     radius = ((1 + (2 * line_poly[0] * y + line_poly[1])**2)**(3 / 2)) / \
              np.absolute(2*line_poly[0])
     return radius
 
 def draw_status(image, left_line, right_line):
     #Check lines detected - TODO
-    #if not (left_line.detected & right_line.detected): return image
+    if not (left_line.detected & right_line.detected): return image
     #Define lines
     left_fitx = lambda y: left_line.current_fit[0] * y**2 + \
                           left_line.current_fit[1] * y + \
@@ -371,28 +372,37 @@ def draw_status(image, left_line, right_line):
     #Calculate road width
     road_width_pix = right_fitx(0) - left_fitx(0)
     road_width = road_width_pix * PIXEL_TO_M_X
-	#Calculate offset from center
-    off_center_pix = image.shape[1] - (right_fitx(0) + left_fitx(0)) / 2
+    #Calculate offset from center
+    off_center_pix = image.shape[1] / 2 - (right_fitx(0) + left_fitx(0)) / 2
     off_center = off_center_pix * PIXEL_TO_M_X
     off_center_str = "Off-center: " + "{0:.2f}".format(off_center) + " m"
-	#Calculate radius
+    #Get line points
     y = np.arange(image.shape[0])
-    left_raddi = get_radius(left_line.current_fit, y)
-    right_raddi = get_radius(right_line.current_fit, y)
-    radius = (np.average(left_raddi) + np.average(right_raddi)) / 2 #TODO - convert to meters?
+    leftx = left_fitx(y)
+    rightx = right_fitx(y)
+    #Convert to real world
+    y = np.multiply(y, PIXEL_TO_M_Y, casting="unsafe")
+    leftx *= PIXEL_TO_M_X
+    rightx *= PIXEL_TO_M_X
+    #Get real world polynomial
+    left_poly = np.polyfit(y, leftx, 2)
+    right_poly = np.polyfit(y, rightx, 2)
+    left_raddi = get_radius(left_poly, y)
+    right_raddi = get_radius(right_poly, y)
+    radius = (np.average(left_raddi) + np.average(right_raddi)) / 2
     radius_str = "Radius: " + "{0:.1f}".format(radius) + " m"
     #Draw on image
     font_color = [0, 0, 255] #Red
     cv2.putText(image, \
                 off_center_str, \
-                (10,20), \
+                (5,20), \
                 cv2.FONT_HERSHEY_PLAIN, \
                 1.5, \
                 font_color, \
                 2)
     cv2.putText(image, \
                 radius_str, \
-                (10,40), \
+                (5,40), \
                 cv2.FONT_HERSHEY_PLAIN, \
                 1.5, \
                 font_color, \
