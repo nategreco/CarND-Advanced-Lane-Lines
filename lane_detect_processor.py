@@ -39,9 +39,9 @@ ROI_SF = np.array([[(0.00, 0.95), \
                     #(0.90, 0.80), \
                     (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH_1 = np.array([0, 10, 6])
-WHITE_UPPER_THRESH_1 = np.array([30, 255, 255])
-WHITE_LOWER_THRESH_2 = np.array([150, 10, 6]) #Should be same as 1 except Hue
+WHITE_LOWER_THRESH_1 = np.array([0, 10, 15])
+WHITE_UPPER_THRESH_1 = np.array([20, 255, 255])
+WHITE_LOWER_THRESH_2 = np.array([160, 10, 15]) #Should be same as 1 except Hue
 WHITE_UPPER_THRESH_2 = np.array([180, 255, 255]) #Should be same as 1 except Hue
 YELLOW_LOWER_THRESH = np.array([5, 10, 45])
 YELLOW_UPPER_THRESH = np.array([55, 255, 255])
@@ -50,17 +50,17 @@ SOBEL_X_UPPER_THRESH = 255
 SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
 SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
 #Calculate the birds eye view matrix transformation
-SRC = np.float32([[580, 500], \
-                  [757, 500], \
-                  [309, 700], \
-                  [1094, 700]])
-DST = np.float32([[280, 0], \
-                  [1094, 0], \
+SRC = np.float32([[594, 450], \
+                  [688, 450], \
                   [280, 720], \
-                  [1094, 720]])
+                  [1213, 720]])
+DST = np.float32([[280, 0], \
+                  [1213, 0], \
+                  [280, 720], \
+                  [1213, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
-NUM_WINDOWS = 4
+NUM_WINDOWS = 9
 WINDOW_WIDTH = 150
 MIN_PIXELS = 50
 LINE_THICKNESS = 10
