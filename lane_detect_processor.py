@@ -69,36 +69,32 @@ PIXEL_TO_M_Y = 30 / 720 #30m / 720 pixels
 
 #Classes
 class Line(): #TODO - Just copied from Udacity course
-    def __init__(self):
-        # was the line detected in the last iteration?
-        self.detected = True  
-        # x values of the last n fits of the line
-        self.recent_xfitted = [] 
-        #average x values of the fitted line over the last n iterations
-        self.bestx = None     
-        #polynomial coefficients averaged over the last n iterations
-        self.best_fit = None  
-        #polynomial coefficients for the most recent fit
-        self.current_fit = [np.array([False])]  
-        #radius of curvature of the line in some units
-        self.radius_of_curvature = None 
-        #distance in meters of vehicle center from the line
-        self.line_base_pos = None 
-        #difference in fit coefficients between last and new fits
-        self.diffs = np.array([0,0,0], dtype='float') 
-        #x values for detected line pixels
-        self.allx = None  
-        #y values for detected line pixels
-        self.ally = None
-    def update(self, y, x):
-        if x.size != 0:
+    def __init__(self, num_to_keep):
+        #Number of lines to average
+        self.num_to_keep = num_to_keep  
+        #Line detection status
+        self.detected = False  
+        #Polynomial coefficients for the most recent fit
+        self.current_fit = np.ndarray(shape=(0,0), dtype=float)
+        #Previoius points
+        self.prev_pts = []
+    def fit_line(self):
+        pts = [item for sublist in self.prev_pts for item in sublist]
+        if pts:
+            y = [i[0] for i in pts]
+            x = [i[1] for i in pts]
             self.current_fit = np.polyfit(y, x, 2)
+        else:
+            self.current_fit = np.ndarray(shape=(0,0), dtype=float)
+    def update(self, y, x):
+        self.prev_pts.append(list(zip(y, x)))
+        if len(self.prev_pts) > self.num_to_keep:
+            del self.prev_pts[0]
+        if x.size != 0:
             self.detected = True
         else:
-            self.current_fit = []
             self.detected = False
-
-#Global variables
+        self.fit_line()
 
 #Functions
 def extract_roi(image):
@@ -156,20 +152,6 @@ def trim_roi(image, pixels):
     #returning the image only where mask pixels are nonzero
     masked_image = cv2.bitwise_and(image, mask)
     return masked_image
-
-def average_lines(lines, new_line, num_to_keep): #TODO - Finish line class
-    lines.append(new_line)
-    #Check size of list
-    if len(lines) > num_to_keep:
-        del lines[0]
-    #Average
-    detected = 0
-    for line in lines:
-        if line.detected:
-            detected += 1
-            #TODO - Some sort of sum here
-    #TODO - Divide by detected
-    return
 
 def calibrate_camera(images, x_pts, y_pts):
     #Assert all images are same shape
@@ -371,8 +353,9 @@ def get_radius(line_poly, y):
     return radius
 
 def draw_status(image, left_line, right_line):
-    #Check lines detected - TODO
-    if not (left_line.detected & right_line.detected): return image
+    #Verify both polynomials defined
+    if not (len(left_line.current_fit) == 3 & \
+            len(right_line.current_fit) == 3): return image
     #Define lines
     left_fitx = lambda y: left_line.current_fit[0] * y**2 + \
                           left_line.current_fit[1] * y + \
