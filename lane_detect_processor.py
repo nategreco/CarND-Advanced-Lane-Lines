@@ -68,7 +68,12 @@ PIXEL_TO_M_X = 3.7 / 894 #3.7m / 894 pixels
 PIXEL_TO_M_Y = 30 / 720 #30m / 720 pixels
 
 #Classes
-class Line(): #TODO - Just copied from Udacity course
+class Line():
+    """
+    This i sthe line class used by both the left and right line.  The class
+    keeps a defined number of frames and creates a best fit 2nd order
+    polynomial.
+    """
     def __init__(self, num_to_keep):
         #Number of lines to average
         self.num_to_keep = num_to_keep  
@@ -99,10 +104,8 @@ class Line(): #TODO - Just copied from Udacity course
 #Functions
 def extract_roi(image):
     """
-    Applies an image mask.
-    
-    Only keeps the region of the image defined by the polygon
-    formed from `vertices`. The rest of the image is set to black.
+    Extracts only the region of interest in the image, which is defined
+    by a scale factor polygon.  This removes extra noise in the image.
     """
     #Create blank mask
     mask = np.zeros_like(image)   
@@ -154,6 +157,10 @@ def trim_roi(image, pixels):
     return masked_image
 
 def calibrate_camera(images, x_pts, y_pts):
+    """
+    This function uses a list of checkerboard images to develop a transformation
+    matrix for undistoring all future images.
+    """
     #Assert all images are same shape
     assert(all(i.shape == images[0].shape) for i in images)
     #Prepare variables
@@ -183,6 +190,11 @@ def calibrate_camera(images, x_pts, y_pts):
     return mtx, dist
 
 def hls_threshold(image):
+    """
+    This function performs both a white and yellow threshold to extract only
+    white and yellow road markings.  It returns a binary masked so it can then
+    be compared to the gradient mask.    
+    """
     hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
     #White threshold
     white_binary_1 = cv2.inRange(hls, WHITE_LOWER_THRESH_1, WHITE_UPPER_THRESH_1)
@@ -195,6 +207,11 @@ def hls_threshold(image):
     return mask
 
 def gradient_threshold(image):
+    """
+    This function performs both an x and y sobel function then compares this
+    against a threshold to highlight edges in images that are potential road
+    markings.
+    """
     #Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #Get derivative with respect to x
@@ -217,7 +234,11 @@ def gradient_threshold(image):
     mask = cv2.bitwise_or(sxbinary, sybinary)
     return mask
 
-def fit_lines(image, left_line, right_line):
+def detect_lines(image, left_line, right_line):
+    """
+    This function uses a sliding window to follow the most amount of pixels,
+    which are then handed to the Line class for updating of the polynomial.
+    """
     #Take a histogram of the bottom half of the image
     histogram = np.sum(image[image.shape[0] // 2:,:], axis=0)
     #Sliding window methodology
@@ -286,6 +307,9 @@ def fit_lines(image, left_line, right_line):
     return output_image
 
 def combine_images(bottom, top):
+    """
+    This function lays all nonzero pixels of the top image on the bottom image.
+    """
     assert(bottom.shape == top.shape)
     #Non-zero pixel method
     nonzero = top.nonzero()
@@ -296,6 +320,10 @@ def combine_images(bottom, top):
     return output_image
 
 def shade_lines(image, left_line, right_line):
+    """
+    This function draws and shades the lane areas defined by the current_fit
+    polynomial.
+    """
     #Setup output image
     output_image = image.copy()
     #Define lines
@@ -347,12 +375,20 @@ def shade_lines(image, left_line, right_line):
     return output_image
 
 def get_radius(line_poly, y):
+    """
+    This function returns the radius of a given line polynomial, independent of
+    units.    
+    """
     #Returns the radius created by a 2nd order polynomial
     radius = ((1 + (2 * line_poly[0] * y + line_poly[1])**2)**(3 / 2)) / \
              np.absolute(2*line_poly[0])
     return radius
 
 def draw_status(image, left_line, right_line):
+    """
+    This function determines road width, vehicle offset, and road radius in real
+    world units (meters) and draws the current status on the image.
+    """
     #Verify both polynomials defined
     if not (len(left_line.current_fit) == 3 & \
             len(right_line.current_fit) == 3): return image
@@ -403,7 +439,11 @@ def draw_status(image, left_line, right_line):
                 2)
     return image
 
-def detect_lines(image, mtx, dist, left_line, right_line):
+def process_image(image, mtx, dist, left_line, right_line):
+    """
+    This is the overall function that evalutes each new image to detect road
+    lines and then draw the visual information on it after undistortion.
+    """
     #Work with working copy
     working_image = image.copy()
     #Normalize imaeg
@@ -425,7 +465,7 @@ def detect_lines(image, mtx, dist, left_line, right_line):
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    visual_image = fit_lines(bev_image, left_line, right_line)
+    visual_image = detect_lines(bev_image, left_line, right_line)
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
     output_image = draw_status(output_image, left_line, right_line)

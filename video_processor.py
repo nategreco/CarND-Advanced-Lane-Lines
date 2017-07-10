@@ -63,19 +63,19 @@ for i in range(1, len(sys.argv)):
         (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
          int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     #Create empty line classes
-    left_line = lanetools.Line()
-    right_line = lanetools.Line()
+    left_line = lanetools.Line(5)
+    right_line = lanetools.Line(5)
     while(video_in.isOpened()):
         result, frame = video_in.read()
         if result==False:
             print("File completed: " + sys.argv[i])
             break
         #Process frame to find and draw lines
-        output_image = lanetools.detect_lines(frame, \
-                                              cal_mtx, \
-                                              cal_dist, \
-			                                  left_line, \
-			                                  right_line)
+        output_image = lanetools.process_image(frame, \
+                                               cal_mtx, \
+                                               cal_dist, \
+                                               left_line, \
+                                               right_line)
         #Write new frame
         video_out.write(output_image)
         #Display new frame
