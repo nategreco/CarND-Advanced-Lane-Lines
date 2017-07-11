@@ -19,12 +19,12 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ../examples/undistort_output.png "Undistorted"
-[image2]: ../test_images/test1.jpg "Road Transformed"
-[image3]: ../examples/binary_combo_example.jpg "Binary Example"
-[image4]: ../examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ../examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ../examples/example_output.jpg "Output"
+[image1]: ./bev.JPG "Birds-eye-view"
+[image2]: ./combined_threshold.JPG "Combined threshold"
+[image3]: ./gradient_threshold.JPG "Gradient threshold"
+[image4]: ./hls_threshold.JPG "HLS threshold"
+[image5]: ./result.JPG "Result"
+[image6]: ./windows.JPG "Windows"
 [video1]: ../project_video_edit.mp4 "Video"
 [video2]: ../challenge_video_edit.mp4 "Video"
 [video3]: ../harder_challenge_video_edit.mp4 "Video"
@@ -55,7 +55,6 @@ In calibrate_camera(), each image in the list is iterated through and all of the
 
 Here you can see an original and undistorted image, pay close attention near the edges of the image where the distortion is most significant:
 
-![alt text][image1]
 
 ### Pipeline (single images)
 
@@ -63,7 +62,6 @@ Here you can see an original and undistorted image, pay close attention near the
 
 As shown above on the checkboard image, each road image was also undistorted like shown prior to any image processing:
 
-![alt text][image2]
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
@@ -71,17 +69,21 @@ Two functions were used to generate binary masks which where then combined toget
 
 The first of these functions was hls_threshold().  In this function this image was converted to HLS colorspace, then three thresholds applied.  The first two were both used to detect white road markings. White was split into two thresholds because the cv2.inRange() function had to be called twice because neutral colors wrapped around the 0 value (i.e. a Hue of 178 is nearly the same as a Hue of 2).  Additionally, yellow was detected with another cv2.inRange() call and the two masks were combined with a cv2.bitwise_or().
 
+![HLS Threshold][image4]
+
 The second function was gradient_threshold().  This function first converts the image to grayscale and then performs both a sobel gradient in the X and Y directions.  Afterwards, cv2.inRange() is used to apply a threshold and create a mask, and a bitwise_or is then applied.
+
+![Gradient Threshold][image3]
 
 See below an example of the combined mask of the hls threshold and gradient threshold when applied to the undistorted image:
 
-![alt text][image3]
+![Combined Threshold][image2]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
 The perspective transform was done in the process_image() to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
 
-![alt text][image3]
+![Birds-eye-view][image1]
 
 Additionally, a perspective transform was also necessary to perform the opposite transform in the shade_lines() function, changing the plotted and shadded road line images back to the same perspective as the undistorted image:
 
@@ -109,13 +111,10 @@ This resulted in the following source and destination points:
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
 Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
-
-![alt text][image5]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
@@ -125,7 +124,7 @@ I did this in lines # through # in my code in `my_other_file.py`
 
 I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+![Result][image5]
 
 ---
 
