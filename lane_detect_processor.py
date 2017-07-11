@@ -259,6 +259,20 @@ def detect_lines_basic(image, left_line, right_line):
     midpoint = np.int(histogram.shape[0] / 2)
     leftx_current = np.argmax(histogram[:midpoint])
     rightx_current = np.argmax(histogram[midpoint:]) + midpoint
+    #Check that lane width OK
+    if (rightx_current - leftx_current) < MIN_WIDTH_PIX:
+        #Rely on one with most good pixels
+        if histogram[leftx_current] > histogram[rightx_current]:
+            rightx_current = leftx_current + MIN_WIDTH_PIX
+        else:
+            leftx_current = rightx_current - MIN_WIDTH_PIX
+    elif (rightx_current - leftx_current) > MAX_WIDTH_PIX:
+        #Rely on one with most good pixels
+        if histogram[leftx_current] > histogram[rightx_current]:
+            rightx_current = leftx_current + MAX_WIDTH_PIX
+        else:
+            leftx_current = rightx_current - MAX_WIDTH_PIX
+    #Update width
     width_current = rightx_current - leftx_current
     #Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
@@ -550,7 +564,7 @@ def process_image(image, mtx, dist, left_line, right_line):
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    visual_image = detect_lines_convolution(bev_image, left_line, right_line)
+    visual_image = detect_lines_basic(bev_image, left_line, right_line)
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
     output_image = draw_status(output_image, left_line, right_line)
