@@ -60,10 +60,15 @@ DST = np.float32([[280, 0], \
                   [1213, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
+#Detect lines
 NUM_WINDOWS = 9
 WINDOW_WIDTH = 150
 MIN_PIXELS = 50
+MIN_WIDTH_PIX = 740
+MAX_WIDTH_PIX = 980
+#Shade lines
 LINE_THICKNESS = 10
+#Status
 PIXEL_TO_M_X = 3.7 / 894 #3.7m / 894 pixels
 PIXEL_TO_M_Y = 30 / 720 #30m / 720 pixels
 
@@ -253,6 +258,7 @@ def detect_lines(image, left_line, right_line):
     midpoint = np.int(histogram.shape[0] / 2)
     leftx_current = np.argmax(histogram[:midpoint])
     rightx_current = np.argmax(histogram[midpoint:]) + midpoint
+    width_current = rightx_current - leftx_current
     #Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
     right_lane_inds = []
@@ -289,10 +295,31 @@ def detect_lines(image, left_line, right_line):
         left_lane_inds.append(good_left_inds)
         right_lane_inds.append(good_right_inds)
         #If you found > MIN_PIXELS, recenter next window on their mean position
-        if len(good_left_inds) > MIN_PIXELS:
+        if (len(good_left_inds) > MIN_PIXELS) & \
+           (len(good_right_inds) > MIN_PIXELS):
             leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
-        if len(good_right_inds) > MIN_PIXELS:        
             rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+        elif len(good_left_inds) > MIN_PIXELS:
+            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+            rightx_current = leftx_current + width_current
+        elif len(good_right_inds) > MIN_PIXELS:        
+            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+            leftx_current = rightx_current - width_current
+        #Check that lane width OK
+        if (rightx_current - leftx_current) < MIN_WIDTH_PIX:
+            #Rely on one with most good pixels
+            if len(good_left_inds) > len(good_right_inds):
+                rightx_current = leftx_current + MIN_WIDTH_PIX
+            else:
+                leftx_current = rightx_current - MIN_WIDTH_PIX
+        elif (rightx_current - leftx_current) > MAX_WIDTH_PIX:
+            #Rely on one with most good pixels
+            if len(good_left_inds) > len(good_right_inds):
+                rightx_current = leftx_current + MAX_WIDTH_PIX
+            else:
+                leftx_current = rightx_current - MAX_WIDTH_PIX
+        #Update width
+        width_current = rightx_current - leftx_current
     #Concatenate the arrays of indices
     left_lane_inds = np.concatenate(left_lane_inds)
     right_lane_inds = np.concatenate(right_lane_inds)
