@@ -63,8 +63,8 @@ for i in range(1, len(sys.argv)):
         (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
          int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     #Create empty line classes
-    left_line = lanetools.Line(5)
-    right_line = lanetools.Line(5)
+    left_line = lanetools.Line(15)
+    right_line = lanetools.Line(15)
     while(video_in.isOpened()):
         result, frame = video_in.read()
         if result==False:
@@ -79,9 +79,9 @@ for i in range(1, len(sys.argv)):
         #Write new frame
         video_out.write(output_image)
         #Display new frame
-        cv2.imshow('Results', output_image)        
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        #cv2.imshow('Results', output_image)        
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
     video_in.release()
     video_out.release()
 
