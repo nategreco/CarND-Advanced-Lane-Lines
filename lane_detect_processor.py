@@ -61,8 +61,9 @@ DST = np.float32([[280, 0], \
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 #Detect lines
-NUM_WINDOWS = 9
-WINDOW_WIDTH = 150
+NUM_WINDOWS = 20
+WINDOW_WIDTH = 200
+MARGIN = 50
 MIN_PIXELS = 50
 MIN_WIDTH_PIX = 740
 MAX_WIDTH_PIX = 980
@@ -239,7 +240,7 @@ def gradient_threshold(image):
     mask = cv2.bitwise_or(sxbinary, sybinary)
     return mask
 
-def detect_lines(image, left_line, right_line):
+def detect_lines_basic(image, left_line, right_line):
     """
     This function uses a sliding window to follow the most amount of pixels,
     which are then handed to the Line class for updating of the polynomial.
@@ -331,6 +332,63 @@ def detect_lines(image, left_line, right_line):
     #Fit a second order polynomial to each
     left_line.update(lefty, leftx)
     right_line.update(righty, rightx)
+    return output_image
+
+def detect_lines_convolution(image, left_line, right_line):
+    """
+    This function uses convolution methodology to find highest 
+    concentrations of pixels, which centerpoints are then handed to the Line
+    class for updating of the polynomial.
+    """
+    #Store centroid postions per each y position
+    left_centroids = []
+    right_centroids = []
+    window = np.ones(WINDOW_WIDTH)
+    window_height = np.int(image.shape[0] / NUM_WINDOWS)
+    #Sum quarter bottom of image to get slice, could use a different ratio
+    l_sum = np.sum(image[int(3 * image.shape[0] / 4):, \
+                         :int(image.shape[1] / 2)], axis=0)
+    l_center = int(np.argmax(np.convolve(window, l_sum)) - \
+               WINDOW_WIDTH / 2)
+    r_sum = np.sum(image[int(3 * image.shape[0] / 4):, \
+                         int(image.shape[1]/2):], axis=0)
+    r_center = int(np.argmax(np.convolve(window,r_sum)) - \
+               WINDOW_WIDTH / 2 + \
+               int(image.shape[1]/2))
+    #Add what we found for the first layer
+    left_centroids.append([l_center, 0])
+    right_centroids.append([r_center, 0])
+
+    #Go through each layer looking for max pixel locations
+    for level in range(1, int(image.shape[0]/ window_height)):
+        #Convolve the window into the vertical slice of the image
+        image_layer = np.sum(image[int(image.shape[0] - \
+            (level + 1) * window_height):int(image.shape[0] - \
+            level * window_height), :], axis=0)
+        conv_signal = np.convolve(window, image_layer)
+        #Find the best left centroid by using past left center as a reference
+        offset = WINDOW_WIDTH / 2
+        l_min_index = int(max(l_center + offset - MARGIN, 0))
+        l_max_index = int(min(l_center + offset + MARGIN, image.shape[1]))
+        l_center = int(np.argmax(conv_signal[l_min_index:l_max_index]) + \
+                       l_min_index - offset)
+        #Find the best right centroid by using past right center as a reference
+        r_min_index = int(max(r_center + offset - MARGIN, 0))
+        r_max_index = int(min(r_center + offset + MARGIN, image.shape[1]))
+        r_center = int(np.argmax(conv_signal[r_min_index:r_max_index]) + \
+                       r_min_index - offset)
+        #Add what we found for that layer
+        left_centroids.append([l_center, int((level + 0.5) * window_height)])
+        right_centroids.append([r_center, int((level + 0.5) * window_height)])
+    #Fit a second order polynomial to each
+    lefty = np.array([i[1] for i in left_centroids])
+    leftx = np.array([i[0] for i in left_centroids])
+    left_line.update(lefty, leftx)
+    righty = np.array([i[1] for i in right_centroids])
+    rightx = np.array([i[0] for i in right_centroids])
+    right_line.update(righty, rightx)    
+    #Need to visualize data on output image - TODO
+    output_image = image
     return output_image
 
 def combine_images(bottom, top):
@@ -492,7 +550,7 @@ def process_image(image, mtx, dist, left_line, right_line):
                                     BEV_MATRIX, \
                                     (binary.shape[1], binary.shape[0]))
     #Find lines
-    visual_image = detect_lines(bev_image, left_line, right_line)
+    visual_image = detect_lines_convolution(bev_image, left_line, right_line)
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
     output_image = draw_status(output_image, left_line, right_line)
