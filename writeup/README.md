@@ -79,6 +79,7 @@ See below an example of the combined mask of the hls threshold and gradient thre
 
 ![Combined Threshold][image2]
 
+
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
 The perspective transform was done in the process_image() to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
@@ -116,31 +117,41 @@ I verified that my perspective transform was working as expected by drawing the 
 
 Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
 
+
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
 I did this in lines # through # in my code in `my_other_file.py`
 
+
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Two functions applied the result of the lane detection to the image.  First was the shade_lanes() function, which plotted each of the lane polynomials into an array of points.  If there was a valid fit for both lines, the function shades the area, if only one of the lines were detected, it drew only that line.  Additionally for this function it was key to have the inverse matrix transform for the 'birds-eye' view perspective so the lines could be plotted then warped to origianl perspective.
+
+The second function used was draw_status(), which calculated the road width, offset, and average radius of both lines combined.  This information was then drawn in the top left of the original image plus line shading.
+
+See the result below:
 
 ![Result][image5]
+
 
 ---
 
 ### Pipeline (video)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+#### 1. Provide a link to your final video output.
 
 Here's my results:
 [Original Video](../project_video_edit.mp4)
 [Challenge 1](../challenge_video_edit.mp4)
 [Challenge 2](../harder_challenge_video_edit.mp4)
 
+
 ---
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The two largest challenges of this project were getting a corrrect warp matrix and determining good thresholding values.  The warp matrix was particularly tricky due to the sensitivity of the point values.  I believe this is likely due to the 'farther' into the distance you wish to detect, the closer the top left/right points became making only a pixels difference make radical changes in the radius and direction of the road line after warped.
+
+The second challenge was tresholding, specifically in HLS space for the white lanes due to the difficulty of differentiating between the grey road surface and white road lines, as both had a near neutral hue and inconsistent lightness.  Saturation was the critcal value to distinguish in the end.
