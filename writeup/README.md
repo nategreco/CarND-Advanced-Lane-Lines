@@ -51,7 +51,7 @@ My project includes the following files:
 
 Upon initally running the video_processor.py script, all the images in "./camera_cal" directory are loaded into a list and passed to calibrate_camera() in lane_detect_processor.py with the the number of x and y points.
 
-In calibrate_camera(), each image in the list is iterated through and all of the object points are detected wit h cv2.findChessboardCorners().  Both the image points and the corner numbers are appended to lists and then passed to  cv2.calibrateCamera(), which returns a transformation matrix which is later used by cv2.undistort() to undistort the original and present a true image.  This is done to every image in process_image() prior to any processing.
+In [calibrate_camera()](../lane_detect_processor.py#L165), each image in the list is iterated through and all of the object points are detected wit h cv2.findChessboardCorners().  Both the image points and the corner numbers are appended to lists and then passed to cv2.calibrateCamera(), which returns a transformation matrix which is later used by cv2.undistort() to undistort the original and present a true image.  This is done to every image in [process_image()](../lane_detect_processor.py#L541) prior to any processing.
 
 Here you can see an original and undistorted image, pay close attention near the edges of the image where the distortion is most significant:
 
@@ -67,11 +67,11 @@ As shown above on the checkboard image, each road image was also undistorted lik
 
 Two functions were used to generate binary masks which where then combined together with a cv2.bitwise_and().
 
-The first of these functions was hls_threshold().  In this function this image was converted to HLS colorspace, then three thresholds applied.  The first two were both used to detect white road markings. White was split into two thresholds because the cv2.inRange() function had to be called twice because neutral colors wrapped around the 0 value (i.e. a Hue of 178 is nearly the same as a Hue of 2).  Additionally, yellow was detected with another cv2.inRange() call and the two masks were combined with a cv2.bitwise_or().
+The first of these functions was [hls_threshold()](../lane_detect_processor.py#L198).  In this function this image was converted to HLS colorspace, then three thresholds applied.  The first two were both used to detect white road markings. White was split into two thresholds because the cv2.inRange() function had to be called twice because neutral colors wrapped around the 0 value (i.e. a Hue of 178 is nearly the same as a Hue of 2).  Additionally, yellow was detected with another cv2.inRange() call and the two masks were combined with a cv2.bitwise_or().
 
 ![HLS Threshold][image4]
 
-The second function was gradient_threshold().  This function first converts the image to grayscale and then performs both a sobel gradient in the X and Y directions.  Afterwards, cv2.inRange() is used to apply a threshold and create a mask, and a bitwise_or is then applied.
+The second function was [gradient_threshold()](../lane_detect_processor.py#L215).  This function first converts the image to grayscale and then performs both a sobel gradient in the X and Y directions.  Afterwards, cv2.inRange() is used to apply a threshold and create a mask, and a bitwise_or is then applied.
 
 ![Gradient Threshold][image3]
 
@@ -82,11 +82,11 @@ See below an example of the combined mask of the hls threshold and gradient thre
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The perspective transform was done in the process_image() to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
+The perspective transform was done in the [process_image()](../lane_detect_processor.py#L541) to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
 
 ![Birds-eye-view][image1]
 
-Additionally, a perspective transform was also necessary to perform the opposite transform in the shade_lines() function, changing the plotted and shadded road line images back to the same perspective as the undistorted image:
+Additionally, a perspective transform was also necessary to perform the opposite transform in the [shade_lines()](../lane_detect_processor.py#L421) function, changing the plotted and shadded road line images back to the same perspective as the undistorted image:
 
 ```python
 src = np.float32(
@@ -125,9 +125,9 @@ I did this in lines # through # in my code in `my_other_file.py`
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-Two functions applied the result of the lane detection to the image.  First was the shade_lanes() function, which plotted each of the lane polynomials into an array of points.  If there was a valid fit for both lines, the function shades the area, if only one of the lines were detected, it drew only that line.  Additionally for this function it was key to have the inverse matrix transform for the 'birds-eye' view perspective so the lines could be plotted then warped to origianl perspective.
+Two functions applied the result of the lane detection to the image.  First was the [shade_lines()](../lane_detect_processor.py#L421) function, which plotted each of the lane polynomials into an array of points.  If there was a valid fit for both lines, the function shades the area, if only one of the lines were detected, it drew only that line.  Additionally for this function it was key to have the inverse matrix transform for the 'birds-eye' view perspective so the lines could be plotted then warped to origianl perspective.
 
-The second function used was draw_status(), which calculated the road width, offset, and average radius of both lines combined.  This information was then drawn in the top left of the original image plus line shading.
+The second function used was [draw_status()](../lane_detect_processor.py#L486), which calculated the road width, offset, and average radius of both lines combined.  This information was then drawn in the top left of the original image plus line shading.
 
 See the result below:
 
