@@ -36,13 +36,13 @@ The goals / steps of this project are the following:
 #### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.
 
 My project includes the following files:
-* [video_processor.py](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/video_processor.py) containing main function which handles video file paths as arguements to process
-* [video_processor_tools.py](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/video_processor_tools.py) containing various functions for the editing of video files
-* [lane_detect_processor.py](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/lane_detect_processor.py) containing all classes and functions for lane detection and image manipulation
-* [project_video_edit.mp4](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/project_video_edit.mp4) original video after processing
-* [challenge_video_edit.mp4](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/challenge_video_edit.mp4) challenge video after processing
-* [harder_challenge_video_edit.mp4](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/harder_challenge_video_edit.mp4) harder challenge video after processing
-* [README.md](https://github.com/nategreco/CarND-Advanced-Lane-Lines/blob/master/writeup/README.md) the report you are reading now
+* [video_processor.py](../video_processor.py) containing main function which handles video file paths as arguements to process
+* [video_processor_tools.py](../video_processor_tools.py) containing various functions for the editing of video files
+* [lane_detect_processor.py](../lane_detect_processor.py) containing all classes and functions for lane detection and image manipulation
+* [project_video_edit.mp4](../project_video_edit.mp4) original video after processing
+* [challenge_video_edit.mp4](../challenge_video_edit.mp4) challenge video after processing
+* [harder_challenge_video_edit.mp4](../harder_challenge_video_edit.mp4) harder challenge video after processing
+* [README.md](../writeup/README.md) the report you are reading now
 
 
 ### Camera Calibration
@@ -85,42 +85,42 @@ See below an example of the combined mask of the hls threshold and gradient thre
 The perspective transform was done in the [process_image()](../lane_detect_processor.py#L541) to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
 
 ![Birds-eye-view][image1]
+The implemenation of the transform itself was easy, however, obtaining a proper transformation matrix was diffuclt.  In the [constants](../lane_detect_processor.py#L34) area of my code I implemented selected points in the source and destination arrays and generated both a "birds-eye-view" matrix and a matrix to warp back to the original perspective.  This was needed for drawing and shading the lanes in the original image.  The points were chosen by choosing top and bottom points from both lanes taken from a straight road segment (SRC) and then translating them so they would extend to the complete top and bottom of the image in paralell (DST), so all X points were maintained constant from the bottom of the original image and Y points were top and bottom of the image size
 
-Additionally, a perspective transform was also necessary to perform the opposite transform in the [shade_lines()](../lane_detect_processor.py#L421) function, changing the plotted and shadded road line images back to the same perspective as the undistorted image:
 
 ```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+SRC = np.float32([[594, 450], \
+                  [688, 450], \
+                  [280, 720], \
+                  [1213, 720]])
+DST = np.float32([[280, 0], \
+                  [1213, 0], \
+                  [280, 720], \
+                  [1213, 720]])
+BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
+INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 ```
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
-
-I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
+| 594, 450      | 280, 0        | 
+| 688, 450      | 1213, 0       |
+| 280, 720      | 280, 720      |
+| 1213, 720     | 1213, 720     |
 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+Fitting of the polynomial for the road liens was done in two places.  First, the [detect_lines_basic()](../lane_detect_processor.py#243) function extracted all the 'good' points using the sliding window methodology.  They were then pased to the [update()](../lane_detect_processor.py#100) method in each [Line()](../lane_detect_processor.py#77) class, which pushed the then points into an FIFO array and best fit a polynomial to all of those points.  By implmenting the polynomial fit in this way the polynomial ft was always an average of the last x frames.
 
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+The function [get_radius()](../lane_detect_processor.py#476) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#519) after plotted points from the original polynomial were scalled to real world units.
+
+Additionally the calculation of road offset was done in the [draw_status()](../lane_detect_processor.py#504) function, which was a simply the difference between the average of the two lines and the image center, multiplied by the real world unit scale factor.
 
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
