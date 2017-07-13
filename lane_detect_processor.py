@@ -256,9 +256,8 @@ def detect_lines_basic(image, left_line, right_line):
     nonzeroy = np.array(nonzero[0])
     nonzerox = np.array(nonzero[1])
     #Create startpoints if no valid polynomial fits
-    if True: #Histogram startpoint seems to work better
-    #if not (len(left_line.current_fit) == 3 & \
-    #            len(right_line.current_fit) == 3):
+    if not (len(left_line.current_fit) == 3 & \
+            len(right_line.current_fit) == 3):
         midpoint = np.int(histogram.shape[0] / 2)
         leftx_current = np.argmax(histogram[:midpoint])
         rightx_current = np.argmax(histogram[midpoint:]) + midpoint
@@ -275,10 +274,14 @@ def detect_lines_basic(image, left_line, right_line):
                 rightx_current = leftx_current + MAX_WIDTH_PIX
             else:
                 leftx_current = rightx_current - MAX_WIDTH_PIX
-    #Otherwise use y = 0 position of current polynomial fits
+    #Otherwise use max y position of current polynomial fits
     else:
-        leftx_current = left_line.current_fit[2]
-        rightx_current = right_line.current_fit[2]
+        leftx_current = left_line.current_fit[0] * image.shape[0]**2 + \
+                        left_line.current_fit[1] * image.shape[0] + \
+                        left_line.current_fit[2]
+        rightx_current = right_line.current_fit[0] * image.shape[0]**2 + \
+                         right_line.current_fit[1] * image.shape[0] + \
+                         right_line.current_fit[2]
     #Update width
     width_current = rightx_current - leftx_current
     #Create empty lists to receive left and right lane pixel indices
