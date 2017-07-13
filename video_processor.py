@@ -56,7 +56,8 @@ cal_mtx, cal_dist = lanetools.calibrate_camera(images, CAL_PTS_X, CAL_PTS_Y)
 
 #Iterate through video files
 for i in range(1, len(sys.argv)):
-    video_in = cv2.VideoCapture(sys.argv[i])   
+    video_in = cv2.VideoCapture(sys.argv[i])
+    #video_in.set(cv2.CAP_PROP_POS_MSEC, 21000) #For testing
     video_out = cv2.VideoWriter(vidtools.rename_output_file(sys.argv[i]), \
         int(video_in.get(cv2.CAP_PROP_FOURCC)), \
         video_in.get(cv2.CAP_PROP_FPS), \
@@ -79,9 +80,9 @@ for i in range(1, len(sys.argv)):
         #Write new frame
         video_out.write(output_image)
         #Display new frame
-        #cv2.imshow('Results', output_image)        
-        #if cv2.waitKey(1) & 0xFF == ord('q'):
-        #    break
+        cv2.imshow('Results', output_image)        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
     video_in.release()
     video_out.release()
 

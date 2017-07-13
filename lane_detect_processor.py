@@ -39,25 +39,25 @@ ROI_SF = np.array([[(0.00, 0.95), \
                     #(0.90, 0.80), \
                     (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH_1 = np.array([0, 10, 15])
-WHITE_UPPER_THRESH_1 = np.array([20, 255, 255])
-WHITE_LOWER_THRESH_2 = np.array([160, 10, 15]) #Should be same as 1 except Hue
+WHITE_LOWER_THRESH_1 = np.array([0, 10, 50])
+WHITE_UPPER_THRESH_1 = np.array([18, 255, 255])
+WHITE_LOWER_THRESH_2 = np.array([162, 10, 50]) #Should be same as 1 except Hue
 WHITE_UPPER_THRESH_2 = np.array([180, 255, 255]) #Should be same as 1 except Hue
-YELLOW_LOWER_THRESH = np.array([5, 10, 45])
-YELLOW_UPPER_THRESH = np.array([55, 255, 255])
-SOBEL_X_LOWER_THRESH = 20
+YELLOW_LOWER_THRESH = np.array([10, 10, 55])
+YELLOW_UPPER_THRESH = np.array([50, 255, 255])
+SOBEL_X_LOWER_THRESH = 55
 SOBEL_X_UPPER_THRESH = 255
 SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
 SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
 #Calculate the birds eye view matrix transformation
-SRC = np.float32([[594, 450], \
-                  [688, 450], \
-                  [280, 720], \
-                  [1213, 720]])
-DST = np.float32([[280, 0], \
-                  [1213, 0], \
-                  [280, 720], \
-                  [1213, 720]])
+SRC = np.float32([[582, 460], \
+                  [698, 460], \
+                  [185, 720], \
+                  [1095, 720]])
+DST = np.float32([[185, 0], \
+                  [1095, 0], \
+                  [185, 720], \
+                  [1095, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 #Detect lines
@@ -255,23 +255,30 @@ def detect_lines_basic(image, left_line, right_line):
     nonzero = image.nonzero()
     nonzeroy = np.array(nonzero[0])
     nonzerox = np.array(nonzero[1])
-    #Create startpoints
-    midpoint = np.int(histogram.shape[0] / 2)
-    leftx_current = np.argmax(histogram[:midpoint])
-    rightx_current = np.argmax(histogram[midpoint:]) + midpoint
-    #Check that lane width OK
-    if (rightx_current - leftx_current) < MIN_WIDTH_PIX:
-        #Rely on one with most good pixels
-        if histogram[leftx_current] > histogram[rightx_current]:
-            rightx_current = leftx_current + MIN_WIDTH_PIX
-        else:
-            leftx_current = rightx_current - MIN_WIDTH_PIX
-    elif (rightx_current - leftx_current) > MAX_WIDTH_PIX:
-        #Rely on one with most good pixels
-        if histogram[leftx_current] > histogram[rightx_current]:
-            rightx_current = leftx_current + MAX_WIDTH_PIX
-        else:
-            leftx_current = rightx_current - MAX_WIDTH_PIX
+    #Create startpoints if no valid polynomial fits
+    if True: #Histogram startpoint seems to work better
+    #if not (len(left_line.current_fit) == 3 & \
+    #            len(right_line.current_fit) == 3):
+        midpoint = np.int(histogram.shape[0] / 2)
+        leftx_current = np.argmax(histogram[:midpoint])
+        rightx_current = np.argmax(histogram[midpoint:]) + midpoint
+        #Check that lane width OK
+        if (rightx_current - leftx_current) < MIN_WIDTH_PIX:
+            #Rely on one with most good pixels
+            if histogram[leftx_current] > histogram[rightx_current]:
+                rightx_current = leftx_current + MIN_WIDTH_PIX
+            else:
+                leftx_current = rightx_current - MIN_WIDTH_PIX
+        elif (rightx_current - leftx_current) > MAX_WIDTH_PIX:
+            #Rely on one with most good pixels
+            if histogram[leftx_current] > histogram[rightx_current]:
+                rightx_current = leftx_current + MAX_WIDTH_PIX
+            else:
+                leftx_current = rightx_current - MAX_WIDTH_PIX
+    #Otherwise use y = 0 position of current polynomial fits
+    else:
+        leftx_current = left_line.current_fit[2]
+        rightx_current = right_line.current_fit[2]
     #Update width
     width_current = rightx_current - leftx_current
     #Create empty lists to receive left and right lane pixel indices
