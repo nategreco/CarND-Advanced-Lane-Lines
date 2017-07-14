@@ -133,8 +133,11 @@ This resulted in the following source and destination points:
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Fitting of the polynomial for the road liens was done in two places.  First, the [detect_lines_basic()](../lane_detect_processor.py#L243) function extracted all the 'good' points using the sliding window methodology.  They were then pased to the [update()](../lane_detect_processor.py#L100) method in each [Line()](../lane_detect_processor.py#L77) class, which pushed the then points into an FIFO array and best fit a polynomial to all of those points.  By implmenting the polynomial fit in this way the polynomial ft was always an average of the last x frames.
+Fitting of the polynomial for the road lines was done in two places.  First, the [detect_lines_basic()](../lane_detect_processor.py#L243) function extracted all the 'good' points using the sliding window methodology.  They were then pased to the [update()](../lane_detect_processor.py#L100) method in each [Line()](../lane_detect_processor.py#L77) class, which pushed the then points into an FIFO array and best fit a polynomial to all of those points.  By implmenting the polynomial fit in this way the polynomial fit was always an average of the last x frames.
 
+See the result below:
+
+![Windows][image6]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
