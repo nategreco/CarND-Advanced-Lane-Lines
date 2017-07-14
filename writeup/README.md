@@ -139,6 +139,13 @@ See the result below:
 
 ![Windows][image6]
 
+The sliding window methodology was improved upon from the classroom exercises in the following ways:
+
+* If a current best fit polynomial was already defined for the line, the start points were solved for by the equation instead of a histogram.
+* Limits to road width were implemented, that way the function was discouraged to follow noise on the inside or outside of the road lines.
+* If the left or right lane window did not detect the minium amount of pixels, it would adjust its position in the next window by the same amount the other lane moved.  This was especially helpful when one line was solid and another was segmented, as it would continue the windows in the direction of the line even if the window did not capture a segment.
+
+
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
 The function [get_radius()](../lane_detect_processor.py#L476) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#L519) after plotted points from the original polynomial were scalled to real world units.
