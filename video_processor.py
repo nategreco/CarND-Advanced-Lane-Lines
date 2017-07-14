@@ -57,15 +57,14 @@ cal_mtx, cal_dist = lanetools.calibrate_camera(images, CAL_PTS_X, CAL_PTS_Y)
 #Iterate through video files
 for i in range(1, len(sys.argv)):
     video_in = cv2.VideoCapture(sys.argv[i])
-    #video_in.set(cv2.CAP_PROP_POS_MSEC, 21000) #For testing
     video_out = cv2.VideoWriter(vidtools.rename_output_file(sys.argv[i]), \
         int(video_in.get(cv2.CAP_PROP_FOURCC)), \
         video_in.get(cv2.CAP_PROP_FPS), \
         (int(video_in.get(cv2.CAP_PROP_FRAME_WIDTH)), \
          int(video_in.get(cv2.CAP_PROP_FRAME_HEIGHT))))
     #Create empty line classes
-    left_line = lanetools.Line(15)
-    right_line = lanetools.Line(15)
+    left_line = lanetools.Line(10)
+    right_line = lanetools.Line(10)
     while(video_in.isOpened()):
         result, frame = video_in.read()
         if result==False:

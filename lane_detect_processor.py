@@ -39,16 +39,16 @@ ROI_SF = np.array([[(0.00, 0.95), \
                     #(0.90, 0.80), \
                     (1.00, 0.95)]], \
                   dtype=np.float64)
-WHITE_LOWER_THRESH_1 = np.array([0, 10, 50])
-WHITE_UPPER_THRESH_1 = np.array([18, 255, 255])
-WHITE_LOWER_THRESH_2 = np.array([162, 10, 50]) #Should be same as 1 except Hue
-WHITE_UPPER_THRESH_2 = np.array([180, 255, 255]) #Should be same as 1 except Hue
+WHITE_LOWER_THRESH_1 = np.array([0, 180, 0])
+WHITE_UPPER_THRESH_1 = np.array([180, 255, 255])
+WHITE_LOWER_THRESH_2 = np.array([180, 255, 255]) #Not used
+WHITE_UPPER_THRESH_2 = np.array([180, 255, 255]) #Not used
 YELLOW_LOWER_THRESH = np.array([10, 10, 55])
 YELLOW_UPPER_THRESH = np.array([50, 255, 255])
-SOBEL_X_LOWER_THRESH = 55
+SOBEL_X_LOWER_THRESH = 20
 SOBEL_X_UPPER_THRESH = 255
-SOBEL_Y_LOWER_THRESH = 255 #Not in use when equal to upper
-SOBEL_Y_UPPER_THRESH = 255 #Not in use when equal to lower
+SOBEL_Y_LOWER_THRESH = 255 #Not used
+SOBEL_Y_UPPER_THRESH = 255 #Not used
 #Calculate the birds eye view matrix transformation
 SRC = np.float32([[582, 460], \
                   [698, 460], \
@@ -61,9 +61,9 @@ DST = np.float32([[185, 0], \
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 #Detect lines
-NUM_WINDOWS = 20
-WINDOW_WIDTH = 200
-MARGIN = 50
+NUM_WINDOWS = 15
+WINDOW_WIDTH = 250
+MARGIN = 50 #Convolutional only, not used
 MIN_PIXELS = 50
 MIN_WIDTH_PIX = 740
 MAX_WIDTH_PIX = 980
@@ -201,7 +201,7 @@ def hls_threshold(image):
     white and yellow road markings.  It returns a binary masked so it can then
     be compared to the gradient mask.    
     """
-    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+    hls = cv2.cvtColor(cv2.blur(image, (3,3)), cv2.COLOR_BGR2HLS)
     #White threshold
     white_binary_1 = cv2.inRange(hls, WHITE_LOWER_THRESH_1, WHITE_UPPER_THRESH_1)
     white_binary_2 = cv2.inRange(hls, WHITE_LOWER_THRESH_2, WHITE_UPPER_THRESH_2)
@@ -218,8 +218,8 @@ def gradient_threshold(image):
     against a threshold to highlight edges in images that are potential road
     markings.
     """
-    #Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #Convert to grayscale and blur
+    gray = cv2.cvtColor(cv2.blur(image, (3,3)), cv2.COLOR_BGR2GRAY)
     #Get derivative with respect to x
     sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
     abs_sobel_x = np.absolute(sobel_x)
@@ -358,7 +358,7 @@ def detect_lines_basic(image, left_line, right_line):
     right_line.update(righty, rightx)
     return output_image
 
-def detect_lines_convolution(image, left_line, right_line):
+def detect_lines_convolution(image, left_line, right_line): #Not used
     """
     This function uses convolution methodology to find highest 
     concentrations of pixels, which centerpoints are then handed to the Line
@@ -555,7 +555,7 @@ def process_image(image, mtx, dist, left_line, right_line):
     """
     #Work with working copy
     working_image = image.copy()
-    #Normalize imaeg
+    #Normalize image
     cv2.normalize(working_image, working_image, 0, 255, cv2.NORM_MINMAX)
     #Undistort image
     true_image = cv2.undistort(working_image, mtx, dist, None, mtx)
@@ -578,11 +578,4 @@ def process_image(image, mtx, dist, left_line, right_line):
     #Create output image
     output_image = shade_lines(true_image, left_line, right_line)
     output_image = draw_status(output_image, left_line, right_line)
-    #Temporary test image
-    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(color_mask, cv2.COLOR_GRAY2BGR))
-    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(gradient_mask, cv2.COLOR_GRAY2BGR))
-    #output_image = cv2.bitwise_and(working_image, cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
-    #output_image = binary
-    #output_image = bev_image
-    #output_image = visual_image
     return output_image
