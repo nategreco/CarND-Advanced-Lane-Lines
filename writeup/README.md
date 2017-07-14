@@ -25,6 +25,10 @@ The goals / steps of this project are the following:
 [image4]: ./hls_threshold.JPG "HLS threshold"
 [image5]: ./result.JPG "Result"
 [image6]: ./windows.JPG "Windows"
+[image7]: ./original.JPG "Original"
+[image8]: ./undistorted.JPG "Undistorted"
+[image9]: ./check_original.JPG "Original"
+[image10]: ./check_undistorted.JPG "Undistorted"
 [video1]: ../project_video_edit.mp4 "Video"
 [video2]: ../challenge_video_edit.mp4 "Video"
 [video3]: ../harder_challenge_video_edit.mp4 "Video"
@@ -53,14 +57,30 @@ Upon initally running the video_processor.py script, all the images in "./camera
 
 In [calibrate_camera()](../lane_detect_processor.py#L165), each image in the list is iterated through and all of the object points are detected wit h cv2.findChessboardCorners().  Both the image points and the corner numbers are appended to lists and then passed to cv2.calibrateCamera(), which returns a transformation matrix which is later used by cv2.undistort() to undistort the original and present a true image.  This is done to every image in [process_image()](../lane_detect_processor.py#L541) prior to any processing.
 
-Here you can see an original and undistorted image, pay close attention near the edges of the image where the distortion is most significant:
+Here you can see an original and undistorted image, pay close attention to the straightness of the lines created by the checkerboard edges:
+
+Original:
+
+![Original][image9]
+
+Undistorted:
+
+![Undistorted][image10]
 
 
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
 
-As shown above on the checkboard image, each road image was also undistorted like shown prior to any image processing:
+As shown above on the checkboard image, each road image was also undistorted like shown prior to any image processing.
+
+Original:
+
+![Original][image7]
+
+Undistorted:
+
+![Undistorted][image8]
 
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
@@ -89,14 +109,14 @@ The implemenation of the transform itself was easy, however, obtaining a proper 
 
 
 ```python
-SRC = np.float32([[594, 450], \
-                  [688, 450], \
-                  [280, 720], \
-                  [1213, 720]])
-DST = np.float32([[280, 0], \
-                  [1213, 0], \
-                  [280, 720], \
-                  [1213, 720]])
+SRC = np.float32([[582, 460], \
+                  [698, 460], \
+                  [185, 720], \
+                  [1095, 720]])
+DST = np.float32([[185, 0], \
+                  [1095, 0], \
+                  [185, 720], \
+                  [1095, 720]])
 BEV_MATRIX = cv2.getPerspectiveTransform(SRC, DST)
 INV_MATRIX = cv2.getPerspectiveTransform(DST, SRC)
 ```
@@ -105,22 +125,22 @@ This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 594, 450      | 280, 0        | 
-| 688, 450      | 1213, 0       |
-| 280, 720      | 280, 720      |
-| 1213, 720     | 1213, 720     |
+| 582, 460      | 185, 0        | 
+| 698, 460      | 1095, 0       |
+| 185, 720      | 185, 720      |
+| 1095, 720     | 1095, 720     |
 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Fitting of the polynomial for the road liens was done in two places.  First, the [detect_lines_basic()](../lane_detect_processor.py#243) function extracted all the 'good' points using the sliding window methodology.  They were then pased to the [update()](../lane_detect_processor.py#100) method in each [Line()](../lane_detect_processor.py#77) class, which pushed the then points into an FIFO array and best fit a polynomial to all of those points.  By implmenting the polynomial fit in this way the polynomial ft was always an average of the last x frames.
+Fitting of the polynomial for the road liens was done in two places.  First, the [detect_lines_basic()](../lane_detect_processor.py#L243) function extracted all the 'good' points using the sliding window methodology.  They were then pased to the [update()](../lane_detect_processor.py#L100) method in each [Line()](../lane_detect_processor.py#L77) class, which pushed the then points into an FIFO array and best fit a polynomial to all of those points.  By implmenting the polynomial fit in this way the polynomial ft was always an average of the last x frames.
 
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-The function [get_radius()](../lane_detect_processor.py#476) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#519) after plotted points from the original polynomial were scalled to real world units.
+The function [get_radius()](../lane_detect_processor.py#L476) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#L519) after plotted points from the original polynomial were scalled to real world units.
 
-Additionally the calculation of road offset was done in the [draw_status()](../lane_detect_processor.py#504) function, which was a simply the difference between the average of the two lines and the image center, multiplied by the real world unit scale factor.
+Additionally the calculation of road offset was done in the [draw_status()](../lane_detect_processor.py#L504) function, which was a simply the difference between the average of the two lines and the image center, multiplied by the real world unit scale factor.
 
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
@@ -141,9 +161,9 @@ See the result below:
 #### 1. Provide a link to your final video output.
 
 Here's my results:
-[Original Video](../project_video_edit.mp4)
-[Challenge 1](../challenge_video_edit.mp4)
-[Challenge 2](../harder_challenge_video_edit.mp4)
+[Original Video](../project_video_edit.mp4) - Very succesful and tolerates the the changing road pavement well.
+[Challenge 1](../challenge_video_edit.mp4) - Succesful, handles the changing contrast under the overpass with little distrubance and also ignores the seam in the center of the lane.
+[Challenge 2](../harder_challenge_video_edit.mp4) - Not as succesful.  The sharp radiuses of the road warp it outside of the road image after the perspective transformation, so the pixels are never considered in the polyfit.  Additionally windshield glare and other factors necessitate some image pre-processing to reduce the effect of washout in the image.
 
 
 ---
