@@ -55,7 +55,7 @@ My project includes the following files:
 
 Upon initally running the video_processor.py script, all the images in "./camera_cal" directory are loaded into a list and passed to calibrate_camera() in lane_detect_processor.py with the the number of x and y points.
 
-In [calibrate_camera()](../lane_detect_processor.py#L165), each image in the list is iterated through and all of the object points are detected wit h cv2.findChessboardCorners().  Both the image points and the corner numbers are appended to lists and then passed to cv2.calibrateCamera(), which returns a transformation matrix which is later used by cv2.undistort() to undistort the original and present a true image.  This is done to every image in [process_image()](../lane_detect_processor.py#L541) prior to any processing.
+In [calibrate_camera()](../lane_detect_processor.py#L165), each image in the list is iterated through and all of the object points are detected wit h cv2.findChessboardCorners().  Both the image points and the corner numbers are appended to lists and then passed to cv2.calibrateCamera(), which returns a transformation matrix which is later used by cv2.undistort() to undistort the original and present a true image.  This is done to every image in [process_image()](../lane_detect_processor.py#L551) prior to any processing.
 
 Here you can see an original and undistorted image, pay close attention to the straightness of the lines created by the checkerboard edges:
 
@@ -102,7 +102,7 @@ See below an example of the combined mask of the hls threshold and gradient thre
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The perspective transform was done in the [process_image()](../lane_detect_processor.py#L541) to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
+The perspective transform was done in the [process_image()](../lane_detect_processor.py#L551) to the combined binary masks of the hls_threshold and gradient_threshold results.  The result image appears to be a 'birds-eye' or 'top-down' view, making the road lines appear parallel on a straight road:
 
 ![Birds-eye-view][image1]
 The implemenation of the transform itself was easy, however, obtaining a proper transformation matrix was diffuclt.  In the [constants](../lane_detect_processor.py#L34) area of my code I implemented selected points in the source and destination arrays and generated both a "birds-eye-view" matrix and a matrix to warp back to the original perspective.  This was needed for drawing and shading the lanes in the original image.  The points were chosen by choosing top and bottom points from both lanes taken from a straight road segment (SRC) and then translating them so they would extend to the complete top and bottom of the image in paralell (DST), so all X points were maintained constant from the bottom of the original image and Y points were top and bottom of the image size
@@ -148,16 +148,16 @@ The sliding window methodology was improved upon from the classroom exercises in
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-The function [get_radius()](../lane_detect_processor.py#L476) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#L519) after plotted points from the original polynomial were scalled to real world units.
+The function [get_radius()](../lane_detect_processor.py#L486) was developed to find the radius of a line regardless of physical units, and it was called from [draw_status()](../lane_detect_processor.py#L496	) after plotted points from the original polynomial were scalled to real world units.
 
 Additionally the calculation of road offset was done in the [draw_status()](../lane_detect_processor.py#L504) function, which was a simply the difference between the average of the two lines and the image center, multiplied by the real world unit scale factor.
 
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-Two functions applied the result of the lane detection to the image.  First was the [shade_lines()](../lane_detect_processor.py#L421) function, which plotted each of the lane polynomials into an array of points.  If there was a valid fit for both lines, the function shades the area, if only one of the lines were detected, it drew only that line.  Additionally for this function it was key to have the inverse matrix transform for the 'birds-eye' view perspective so the lines could be plotted then warped to origianl perspective.
+Two functions applied the result of the lane detection to the image.  First was the [shade_lines()](../lane_detect_processor.py#L431) function, which plotted each of the lane polynomials into an array of points.  If there was a valid fit for both lines, the function shades the area, if only one of the lines were detected, it drew only that line.  Additionally for this function it was key to have the inverse matrix transform for the 'birds-eye' view perspective so the lines could be plotted then warped to origianl perspective.
 
-The second function used was [draw_status()](../lane_detect_processor.py#L486), which calculated the road width, offset, and average radius of both lines combined.  This information was then drawn in the top left of the original image plus line shading.
+The second function used was [draw_status()](../lane_detect_processor.py#L496), which calculated the road width, offset, and average radius of both lines combined.  This information was then drawn in the top left of the original image plus line shading.
 
 See the result below:
 
@@ -171,8 +171,11 @@ See the result below:
 #### 1. Provide a link to your final video output.
 
 Here's my results:
+
 [Original Video](../project_video_edit.mp4) - Very succesful and tolerates the the changing road pavement well.
+
 [Challenge 1](../challenge_video_edit.mp4) - Succesful, handles the changing contrast under the overpass with little distrubance and also ignores the seam in the center of the lane.
+
 [Challenge 2](../harder_challenge_video_edit.mp4) - Not as succesful.  The sharp radiuses of the road warp it outside of the road image after the perspective transformation, so the pixels are never considered in the polyfit.  Additionally windshield glare and other factors necessitate some image pre-processing to reduce the effect of washout in the image.
 
 
